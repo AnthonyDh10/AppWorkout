@@ -1,0 +1,20 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>AI Fitness Coach</title>
+</head>
+<body>
+    <h1>AI Fitness Coach</h1>
+    <form method="post">
+        <label for="prompt">Describe your fitness goals:</label><br>
+        <textarea id="prompt" name="prompt" rows="4" cols="50"></textarea><br>
+        <input type="submit" value="Generate Program">
+    </form>
+
+    {% if training_program %}
+    <h2>Your Training Program:</h2>
+    <pre>{{ training_program }}</pre>
+    {% endif %}
+</body>
+</html>
