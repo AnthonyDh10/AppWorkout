@@ -24,10 +24,12 @@
         </form>
     </div>
 
-    {% if training_program %}
-    <div class="card highlight fade-in">
+    {% if training_program_html %}
+    <div class="card fade-in">
         <h2>📋 Votre Programme d'Entraînement</h2>
-        <div style="background: rgba(13, 27, 42, 0.3); padding: var(--spacing-md); border-radius: var(--radius-small); color: var(--text-primary); white-space: pre-wrap; font-family: 'Courier New', monospace; font-size: 0.9rem; line-height: 1.5;">{{ training_program }}</div>
+        <div class="training-program-content">
+            {{ training_program_html|safe }}
+        </div>
     </div>
     {% endif %}
     

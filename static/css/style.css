@@ -479,6 +479,110 @@ select:focus-visible {
   outline-offset: 2px;
 }
 
+/* ===== CONTENU MARKDOWN/PROGRAMME D'ENTRAÎNEMENT ===== */
+.training-program-content {
+  background: rgba(13, 27, 42, 0.4);
+  border-radius: var(--radius-medium);
+  padding: var(--spacing-lg);
+  margin-top: var(--spacing-md);
+  border-left: 4px solid var(--accent);
+}
+
+.training-program-content h1,
+.training-program-content h2,
+.training-program-content h3,
+.training-program-content h4 {
+  color: var(--accent);
+  margin-top: var(--spacing-lg);
+  margin-bottom: var(--spacing-md);
+}
+
+.training-program-content h1:first-child,
+.training-program-content h2:first-child {
+  margin-top: 0;
+}
+
+.training-program-content h2 {
+  font-size: 1.4rem;
+  border-bottom: 2px solid var(--accent);
+  padding-bottom: var(--spacing-xs);
+}
+
+.training-program-content h3 {
+  font-size: 1.2rem;
+  color: var(--accent-secondary);
+}
+
+.training-program-content p {
+  margin-bottom: var(--spacing-md);
+  line-height: 1.7;
+}
+
+.training-program-content ul,
+.training-program-content ol {
+  margin-bottom: var(--spacing-md);
+  padding-left: var(--spacing-lg);
+}
+
+.training-program-content li {
+  margin-bottom: var(--spacing-xs);
+  line-height: 1.6;
+}
+
+.training-program-content strong {
+  color: var(--accent);
+  font-weight: 600;
+}
+
+.training-program-content em {
+  color: var(--accent-secondary);
+  font-style: italic;
+}
+
+.training-program-content code {
+  background: var(--surface);
+  color: var(--accent-secondary);
+  padding: 2px 6px;
+  border-radius: var(--radius-small);
+  font-family: 'Courier New', monospace;
+  font-size: 0.9em;
+}
+
+.training-program-content pre {
+  background: var(--surface);
+  padding: var(--spacing-md);
+  border-radius: var(--radius-medium);
+  overflow-x: auto;
+  margin: var(--spacing-md) 0;
+}
+
+.training-program-content blockquote {
+  border-left: 4px solid var(--accent-secondary);
+  margin: var(--spacing-md) 0;
+  padding-left: var(--spacing-md);
+  color: var(--text-secondary);
+  font-style: italic;
+}
+
+.training-program-content table {
+  margin: var(--spacing-md) 0;
+  border-collapse: collapse;
+  width: 100%;
+}
+
+.training-program-content table th,
+.training-program-content table td {
+  border: 1px solid var(--surface);
+  padding: var(--spacing-sm);
+  text-align: left;
+}
+
+.training-program-content table th {
+  background: var(--surface);
+  color: var(--accent);
+  font-weight: 600;
+}
+
 /* ===== UTILITAIRES ===== */
 .text-center { text-align: center; }
 .text-left { text-align: left; }
