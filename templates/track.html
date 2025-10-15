@@ -107,11 +107,18 @@ function addExercise() {
             <h3>🏋️ Exercice ${exerciseCount + 1}</h3>
             <button type="button" class="btn btn-danger btn-small" onclick="removeExercise(this)">❌</button>
         </div>
-        
-        <div class="form-row">
+          <div class="form-row">
             <div class="form-group">
                 <label>Nom de l'exercice :</label>
-                <input type="text" name="exercise_name_${exerciseCount}" placeholder="Ex: Développé couché" required>
+                <div class="autocomplete-container">
+                    <input type="text" 
+                           name="exercise_name_${exerciseCount}" 
+                           class="exercise-input"
+                           placeholder="Ex: Développé couché" 
+                           autocomplete="off"
+                           required>
+                    <div class="exercise-suggestions" style="display: none;"></div>
+                </div>
             </div>
         </div>
         
@@ -130,9 +137,12 @@ function addExercise() {
             </div>
         </div>
     `;
-    
-    container.appendChild(exerciseDiv);
+      container.appendChild(exerciseDiv);
     exerciseCount++;
+    
+    // Configurer l'autocomplétion pour le nouvel input
+    const newInput = exerciseDiv.querySelector('.exercise-input');
+    setupAutocomplete(newInput);
     
     // Mettre à jour le compteur et afficher le bouton de validation
     document.getElementById('exercise_count').value = exerciseCount;
@@ -167,8 +177,102 @@ function removeExercise(button) {
     exerciseCount = exercises.length;
 }
 
+// Variables globales pour l'autocomplétion
+let existingExercises = [];
+let currentFocusedInput = null;
+
+// Charger la liste des exercices existants
+async function loadExistingExercises() {
+    try {
+        const response = await fetch('/api/exercises');
+        existingExercises = await response.json();
+    } catch (error) {
+        console.error('Erreur lors du chargement des exercices:', error);
+    }
+}
+
+// Configuration de l'autocomplétion pour un input
+function setupAutocomplete(input) {
+    const container = input.closest('.autocomplete-container');
+    const suggestions = container.querySelector('.exercise-suggestions');
+    
+    input.addEventListener('input', function() {
+        const query = this.value.toLowerCase().trim();
+        
+        if (query.length < 2) {
+            suggestions.style.display = 'none';
+            return;
+        }
+        
+        // Filtrer les exercices existants
+        const matches = existingExercises.filter(exercise => 
+            exercise.toLowerCase().includes(query)
+        ).slice(0, 5); // Limiter à 5 suggestions
+        
+        if (matches.length > 0) {
+            suggestions.innerHTML = matches.map(exercise => 
+                `<div class="suggestion-item" data-exercise="${exercise}">
+                    🏋️ ${exercise}
+                </div>`
+            ).join('');
+            suggestions.style.display = 'block';
+            
+            // Ajouter les événements de clic aux suggestions
+            suggestions.querySelectorAll('.suggestion-item').forEach(item => {
+                item.addEventListener('click', function() {
+                    input.value = this.dataset.exercise;
+                    suggestions.style.display = 'none';
+                });
+            });
+        } else {
+            suggestions.style.display = 'none';
+        }
+    });
+    
+    // Masquer les suggestions quand on clique ailleurs
+    input.addEventListener('blur', function() {
+        setTimeout(() => {
+            suggestions.style.display = 'none';
+        }, 200);
+    });
+    
+    // Navigation au clavier dans les suggestions
+    input.addEventListener('keydown', function(e) {
+        const items = suggestions.querySelectorAll('.suggestion-item');
+        const activeItem = suggestions.querySelector('.suggestion-item.active');
+        
+        if (e.key === 'ArrowDown' && suggestions.style.display === 'block') {
+            e.preventDefault();
+            if (!activeItem) {
+                items[0]?.classList.add('active');
+            } else {
+                activeItem.classList.remove('active');
+                const next = activeItem.nextElementSibling || items[0];
+                next.classList.add('active');
+            }
+        } else if (e.key === 'ArrowUp' && suggestions.style.display === 'block') {
+            e.preventDefault();
+            if (!activeItem) {
+                items[items.length - 1]?.classList.add('active');
+            } else {
+                activeItem.classList.remove('active');
+                const prev = activeItem.previousElementSibling || items[items.length - 1];
+                prev.classList.add('active');
+            }
+        } else if (e.key === 'Enter' && activeItem) {
+            e.preventDefault();
+            input.value = activeItem.dataset.exercise;
+            suggestions.style.display = 'none';
+        } else if (e.key === 'Escape') {
+            suggestions.style.display = 'none';
+        }
+    });
+}
+
 // Ajouter automatiquement un premier exercice au chargement de la page
 document.addEventListener('DOMContentLoaded', function() {
+    loadExistingExercises();
+    
     if (document.getElementById('nouvelle-seance').classList.contains('active')) {
         addExercise();
     }
@@ -321,6 +425,52 @@ document.addEventListener('DOMContentLoaded', function() {
     background-color: #d4edda;
     color: #155724;
     border: 1px solid #c3e6cb;
+}
+
+/* Styles pour l'autocomplétion */
+.autocomplete-container {
+    position: relative;
+}
+
+.exercise-suggestions {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    right: 0;
+    background: var(--secondary);
+    border: 1px solid var(--accent);
+    border-top: none;
+    border-radius: 0 0 8px 8px;
+    max-height: 200px;
+    overflow-y: auto;
+    z-index: 1000;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+}
+
+.suggestion-item {
+    padding: 12px 16px;
+    cursor: pointer;
+    transition: background-color 0.2s;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    color: var(--text-primary);
+}
+
+.suggestion-item:last-child {
+    border-bottom: none;
+}
+
+.suggestion-item:hover,
+.suggestion-item.active {
+    background-color: var(--accent);
+    color: var(--primary);
+}
+
+.exercise-input {
+    width: 100%;
+}
+
+.autocomplete-container .exercise-input:focus {
+    border-radius: 8px 8px 0 0;
 }
 
 @media (max-width: 768px) {

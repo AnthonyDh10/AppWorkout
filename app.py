@@ -325,6 +325,30 @@ def calculate_1rm(weight, reps):
     else:  # Pour plus de 12 reps, estimation moins précise
         return round(weight * (1 + reps / 30), 1)
 
+@app.route('/api/exercises')
+def get_exercises():
+    """API pour récupérer la liste des exercices existants"""
+    exercises = set()
+    
+    with sqlite3.connect('database.db') as conn:
+        cur = conn.cursor()
+        
+        # Récupérer les exercices de l'ancienne table
+        cur.execute("SELECT DISTINCT exercise FROM performance")
+        old_exercises = cur.fetchall()
+        for exercise in old_exercises:
+            exercises.add(exercise[0])
+        
+        # Récupérer les exercices des nouvelles séances
+        cur.execute("SELECT DISTINCT exercise_name FROM exercises")
+        new_exercises = cur.fetchall()
+        for exercise in new_exercises:
+            exercises.add(exercise[0])
+    
+    # Convertir en liste triée
+    exercises_list = sorted(list(exercises))
+    return jsonify(exercises_list)
+
 @app.route('/manifest.json')
 def manifest():
     return app.send_static_file('manifest.json')
