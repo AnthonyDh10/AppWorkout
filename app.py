@@ -204,9 +204,126 @@ def view_session(session_id):
 def view_progress():
     with sqlite3.connect('database.db') as conn:
         cur = conn.cursor()
+        
+        # Récupérer toutes les performances de l'ancienne table
         cur.execute("SELECT * FROM performance ORDER BY date DESC")
-        entries = cur.fetchall()
-    return render_template('progress.html', entries=entries)
+        old_entries = cur.fetchall()
+        
+        # Récupérer toutes les performances des nouvelles séances
+        cur.execute("""
+            SELECT e.exercise_name, e.sets, e.reps, e.weight, s.date, s.name
+            FROM exercises e
+            JOIN sessions s ON e.session_id = s.id
+            ORDER BY s.date DESC
+        """)
+        new_entries = cur.fetchall()
+        
+        # Calculer les statistiques par exercice
+        exercise_stats = {}
+        
+        # Traiter les anciennes entrées
+        for entry in old_entries:
+            exercise_name = entry[1]
+            sets = entry[2]
+            reps = entry[3] 
+            weight = entry[4]
+            
+            if exercise_name not in exercise_stats:
+                exercise_stats[exercise_name] = {
+                    'max_weight': weight,
+                    'max_1rm': calculate_1rm(weight, reps),
+                    'best_volume_sets': sets,
+                    'best_volume_reps': reps,
+                    'best_volume_weight': weight,
+                    'best_volume_total': sets * reps * weight,
+                    'total_sessions': 1,
+                    'has_actual_1rm': (reps == 1)
+                }
+            else:
+                stats = exercise_stats[exercise_name]
+                
+                # Mettre à jour le poids max
+                if weight > stats['max_weight']:
+                    stats['max_weight'] = weight
+                
+                # Mettre à jour le 1RM
+                current_1rm = calculate_1rm(weight, reps)
+                if current_1rm > stats['max_1rm']:
+                    stats['max_1rm'] = current_1rm
+                    if reps == 1:
+                        stats['has_actual_1rm'] = True
+                
+                # Mettre à jour le meilleur volume
+                current_volume = sets * reps * weight
+                if current_volume > stats['best_volume_total']:
+                    stats['best_volume_sets'] = sets
+                    stats['best_volume_reps'] = reps
+                    stats['best_volume_weight'] = weight
+                    stats['best_volume_total'] = current_volume
+                
+                stats['total_sessions'] += 1
+        
+        # Traiter les nouvelles entrées (exercices dans les séances)
+        for entry in new_entries:
+            exercise_name = entry[0]
+            sets = entry[1]
+            reps = entry[2]
+            weight = entry[3]
+            
+            if exercise_name not in exercise_stats:
+                exercise_stats[exercise_name] = {
+                    'max_weight': weight,
+                    'max_1rm': calculate_1rm(weight, reps),
+                    'best_volume_sets': sets,
+                    'best_volume_reps': reps,
+                    'best_volume_weight': weight,
+                    'best_volume_total': sets * reps * weight,
+                    'total_sessions': 1,
+                    'has_actual_1rm': (reps == 1)
+                }
+            else:
+                stats = exercise_stats[exercise_name]
+                
+                # Mettre à jour le poids max
+                if weight > stats['max_weight']:
+                    stats['max_weight'] = weight
+                
+                # Mettre à jour le 1RM
+                current_1rm = calculate_1rm(weight, reps)
+                if current_1rm > stats['max_1rm']:
+                    stats['max_1rm'] = current_1rm
+                    if reps == 1:
+                        stats['has_actual_1rm'] = True
+                
+                # Mettre à jour le meilleur volume
+                current_volume = sets * reps * weight
+                if current_volume > stats['best_volume_total']:
+                    stats['best_volume_sets'] = sets
+                    stats['best_volume_reps'] = reps
+                    stats['best_volume_weight'] = weight
+                    stats['best_volume_total'] = current_volume
+                
+                stats['total_sessions'] += 1
+        
+        # Trier les exercices par 1RM décroissant
+        sorted_exercises = sorted(exercise_stats.items(), key=lambda x: x[1]['max_1rm'], reverse=True)
+        
+    return render_template('progress.html', 
+                         entries=old_entries, 
+                         exercise_stats=sorted_exercises,
+                         total_exercises=len(exercise_stats))
+
+def calculate_1rm(weight, reps):
+    """
+    Calcule le 1RM en utilisant la formule d'Epley
+    1RM = weight * (1 + reps/30)
+    """
+    if reps == 1:
+        return weight
+    elif reps <= 12:  # Formule fiable jusqu'à 12 reps
+        return round(weight * (1 + reps / 30), 1)
+    else:  # Pour plus de 12 reps, estimation moins précise
+        return round(weight * (1 + reps / 30), 1)
 
 @app.route('/manifest.json')
 def manifest():
