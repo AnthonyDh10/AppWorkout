@@ -1,64 +1,353 @@
 {% extends "base.html" %}
 
-{% block title %}Suivi Performance - AI Fitness Coach{% endblock %}
+{% block title %}Séances - AI Fitness Coach{% endblock %}
 
 {% block content %}
 <div class="fade-in">
-    <h1>📊 Suivi des Performances</h1>
+    <h1>🏋️ Gestion des Séances</h1>
     
-    <div class="card">
-        <h2>Enregistrer une séance</h2>
-        <p>Saisissez les détails de votre exercice pour suivre vos progrès.</p>
-        
-        <form method="post">
-            <label for="exercise">🏋️ Exercice :</label>
-            <input 
-                type="text" 
-                id="exercise" 
-                name="exercise" 
-                placeholder="Ex: Développé couché, Squat, Deadlift..."
-                required
-            >
-            
-            <label for="sets">🔢 Nombre de séries :</label>
-            <input 
-                type="number" 
-                id="sets" 
-                name="sets" 
-                min="1" 
-                max="20"
-                placeholder="3"
-                required
-            >
-            
-            <label for="reps">🔁 Répétitions par série :</label>
-            <input 
-                type="number" 
-                id="reps" 
-                name="reps" 
-                min="1" 
-                max="100"
-                placeholder="12"
-                required
-            >
-            
-            <label for="weight">⚖️ Poids (kg) :</label>
-            <input 
-                type="number" 
-                id="weight" 
-                name="weight" 
-                step="0.5" 
-                min="0"
-                placeholder="50.0"
-                required
-            >
-            
-            <button type="submit" class="btn btn-primary btn-full">
-                ✅ Enregistrer la performance
-            </button>
-        </form>
+    {% if message %}
+    <div class="alert alert-success">
+        {{ message }}
+    </div>
+    {% endif %}
+    
+    <!-- Onglets -->
+    <div class="tabs">
+        <button class="tab-btn active" onclick="showTab('nouvelle-seance')">📝 Nouvelle Séance</button>
+        <button class="tab-btn" onclick="showTab('historique')">📊 Historique</button>
     </div>
     
-
+    <!-- Onglet Nouvelle Séance -->
+    <div id="nouvelle-seance" class="tab-content active">
+        <div class="card">
+            <h2>Créer une nouvelle séance</h2>
+            <p>Ajoutez plusieurs exercices à votre séance d'entraînement.</p>
+            
+            <form method="post" id="session-form">
+                <input type="hidden" name="action" value="create_session">
+                <input type="hidden" name="exercise_count" id="exercise_count" value="0">
+                
+                <label for="session_name">📋 Nom de la séance :</label>
+                <input 
+                    type="text" 
+                    id="session_name" 
+                    name="session_name" 
+                    placeholder="Ex: Séance Pectoraux/Triceps, Full Body..."
+                >
+                
+                <div class="exercises-container" id="exercises-container">
+                    <!-- Les exercices seront ajoutés ici dynamiquement -->
+                </div>
+                
+                <div class="session-controls">
+                    <button type="button" class="btn btn-secondary" onclick="addExercise()">
+                        ➕ Ajouter un exercice
+                    </button>
+                    <button type="submit" class="btn btn-primary" id="validate-session" style="display: none;">
+                        ✅ Valider la séance
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+    
+    <!-- Onglet Historique -->
+    <div id="historique" class="tab-content">
+        <div class="card">
+            <h2>Historique des séances</h2>
+            <p>Vos 5 dernières séances d'entraînement.</p>
+            
+            {% if recent_sessions %}
+                <div class="sessions-list">
+                    {% for session in recent_sessions %}
+                    <div class="session-item">
+                        <div class="session-info">
+                            <h3>{{ session[1] or 'Séance sans nom' }}</h3>
+                            <p>📅 {{ session[2][:19] }} | 🏋️ {{ session[3] }} exercice(s)</p>
+                        </div>
+                        <a href="/session/{{ session[0] }}" class="btn btn-outline">Voir détails</a>
+                    </div>
+                    {% endfor %}
+                </div>
+            {% else %}
+                <p class="no-data">Aucune séance enregistrée pour le moment.</p>
+            {% endif %}
+        </div>
+    </div>
 </div>
+
+<script>
+let exerciseCount = 0;
+
+function showTab(tabName) {
+    // Masquer tous les contenus d'onglets
+    document.querySelectorAll('.tab-content').forEach(content => {
+        content.classList.remove('active');
+    });
+    
+    // Désactiver tous les boutons d'onglets
+    document.querySelectorAll('.tab-btn').forEach(btn => {
+        btn.classList.remove('active');
+    });
+    
+    // Afficher le contenu sélectionné
+    document.getElementById(tabName).classList.add('active');
+    
+    // Activer le bouton correspondant
+    event.target.classList.add('active');
+}
+
+function addExercise() {
+    const container = document.getElementById('exercises-container');
+    const exerciseDiv = document.createElement('div');
+    exerciseDiv.className = 'exercise-form';
+    exerciseDiv.innerHTML = `
+        <div class="exercise-header">
+            <h3>🏋️ Exercice ${exerciseCount + 1}</h3>
+            <button type="button" class="btn btn-danger btn-small" onclick="removeExercise(this)">❌</button>
+        </div>
+        
+        <div class="form-row">
+            <div class="form-group">
+                <label>Nom de l'exercice :</label>
+                <input type="text" name="exercise_name_${exerciseCount}" placeholder="Ex: Développé couché" required>
+            </div>
+        </div>
+        
+        <div class="form-row">
+            <div class="form-group">
+                <label>Séries :</label>
+                <input type="number" name="sets_${exerciseCount}" min="1" max="20" placeholder="3" required>
+            </div>
+            <div class="form-group">
+                <label>Répétitions :</label>
+                <input type="number" name="reps_${exerciseCount}" min="1" max="100" placeholder="12" required>
+            </div>
+            <div class="form-group">
+                <label>Poids (kg) :</label>
+                <input type="number" name="weight_${exerciseCount}" step="0.5" min="0" placeholder="50.0" required>
+            </div>
+        </div>
+    `;
+    
+    container.appendChild(exerciseDiv);
+    exerciseCount++;
+    
+    // Mettre à jour le compteur et afficher le bouton de validation
+    document.getElementById('exercise_count').value = exerciseCount;
+    document.getElementById('validate-session').style.display = 'block';
+}
+
+function removeExercise(button) {
+    button.closest('.exercise-form').remove();
+    
+    // Recalculer le nombre d'exercices
+    const exercises = document.querySelectorAll('.exercise-form');
+    document.getElementById('exercise_count').value = exercises.length;
+    
+    // Masquer le bouton de validation si aucun exercice
+    if (exercises.length === 0) {
+        document.getElementById('validate-session').style.display = 'none';
+    }
+    
+    // Renuméroter les exercices
+    exercises.forEach((exercise, index) => {
+        const title = exercise.querySelector('h3');
+        title.textContent = `🏋️ Exercice ${index + 1}`;
+        
+        // Renuméroter les noms des champs
+        const inputs = exercise.querySelectorAll('input');
+        inputs[0].name = `exercise_name_${index}`;
+        inputs[1].name = `sets_${index}`;
+        inputs[2].name = `reps_${index}`;
+        inputs[3].name = `weight_${index}`;
+    });
+    
+    exerciseCount = exercises.length;
+}
+
+// Ajouter automatiquement un premier exercice au chargement de la page
+document.addEventListener('DOMContentLoaded', function() {
+    if (document.getElementById('nouvelle-seance').classList.contains('active')) {
+        addExercise();
+    }
+});
+</script>
+
+<style>
+.tabs {
+    display: flex;
+    margin-bottom: 20px;
+    border-bottom: 2px solid var(--border-color);
+}
+
+.tab-btn {
+    background: none;
+    border: none;
+    padding: 12px 24px;
+    cursor: pointer;
+    font-size: 16px;
+    font-weight: 500;
+    color: var(--text-secondary);
+    transition: all 0.3s ease;
+    border-bottom: 3px solid transparent;
+}
+
+.tab-btn:hover {
+    color: var(--primary-color);
+    background-color: var(--hover-bg);
+}
+
+.tab-btn.active {
+    color: var(--primary-color);
+    border-bottom-color: var(--primary-color);
+    background-color: var(--hover-bg);
+}
+
+.tab-content {
+    display: none;
+}
+
+.tab-content.active {
+    display: block;
+}
+
+.exercise-form {
+    border: 2px solid var(--border-color);
+    border-radius: 12px;
+    padding: 20px;
+    margin-bottom: 20px;
+    background: var(--card-bg);
+}
+
+.exercise-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 15px;
+}
+
+.exercise-header h3 {
+    margin: 0;
+    color: var(--primary-color);
+}
+
+.form-row {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 15px;
+    margin-bottom: 15px;
+}
+
+@media (min-width: 768px) {
+    .form-row:last-child {
+        grid-template-columns: 1fr 1fr 1fr;
+    }
+}
+
+.form-group {
+    display: flex;
+    flex-direction: column;
+}
+
+.form-group label {
+    margin-bottom: 5px;
+    font-weight: 500;
+    color: var(--text-primary);
+}
+
+.session-controls {
+    display: flex;
+    gap: 15px;
+    flex-wrap: wrap;
+    margin-top: 20px;
+}
+
+.btn-small {
+    padding: 8px 12px;
+    font-size: 14px;
+}
+
+.sessions-list {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+}
+
+.session-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 20px;
+    border: 2px solid var(--border-color);
+    border-radius: 12px;
+    background: var(--card-bg);
+    transition: all 0.3s ease;
+}
+
+.session-item:hover {
+    border-color: var(--primary-color);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(74, 144, 226, 0.15);
+}
+
+.session-info h3 {
+    margin: 0 0 8px 0;
+    color: var(--text-primary);
+}
+
+.session-info p {
+    margin: 0;
+    color: var(--text-secondary);
+    font-size: 14px;
+}
+
+.no-data {
+    text-align: center;
+    color: var(--text-secondary);
+    font-style: italic;
+    padding: 40px;
+}
+
+.alert {
+    padding: 15px;
+    border-radius: 8px;
+    margin-bottom: 20px;
+    font-weight: 500;
+}
+
+.alert-success {
+    background-color: #d4edda;
+    color: #155724;
+    border: 1px solid #c3e6cb;
+}
+
+@media (max-width: 768px) {
+    .session-item {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 15px;
+    }
+    
+    .session-controls {
+        flex-direction: column;
+    }
+    
+    .tabs {
+        flex-direction: column;
+    }
+    
+    .tab-btn {
+        text-align: left;
+        border-bottom: 1px solid var(--border-color);
+        border-right: 3px solid transparent;
+    }
+    
+    .tab-btn.active {
+        border-bottom-color: var(--border-color);
+        border-right-color: var(--primary-color);
+    }
+}
+</style>
 {% endblock %}
