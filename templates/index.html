@@ -1,25 +1,52 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <title>AI Fitness Coach</title>
-</head>
-<body>
-    <h1>AI Fitness Coach</h1>
-    <form method="post">
-        <label for="prompt">Describe your fitness goals:</label><br>
-        <textarea id="prompt" name="prompt" rows="4" cols="50"></textarea><br>
-        <input type="submit" value="Generate Program">
-    </form>
+{% extends "base.html" %}
+
+{% block title %}Accueil - AI Fitness Coach{% endblock %}
+
+{% block content %}
+<div class="fade-in">
+    <h1>💪 AI Fitness Coach</h1>
+    
+    <div class="card">
+        <h2>Créez votre programme personnalisé</h2>
+        <p>Décrivez vos objectifs fitness et obtenez un programme d'entraînement sur mesure généré par IA.</p>
+        
+        <form method="post">
+            <label for="prompt">Décrivez vos objectifs fitness :</label>
+            <textarea 
+                id="prompt" 
+                name="prompt" 
+                placeholder="Ex: Je veux perdre du poids, gagner en muscle, améliorer mon endurance..."
+                required
+            ></textarea>
+            <button type="submit" class="btn btn-primary btn-full">
+                🚀 Générer mon programme
+            </button>
+        </form>
+    </div>
 
     {% if training_program %}
-    <h2>Your Training Program:</h2>
-    <pre>{{ training_program }}</pre>
+    <div class="card highlight fade-in">
+        <h2>📋 Votre Programme d'Entraînement</h2>
+        <div style="background: rgba(13, 27, 42, 0.3); padding: var(--spacing-md); border-radius: var(--radius-small); color: var(--text-primary); white-space: pre-wrap; font-family: 'Courier New', monospace; font-size: 0.9rem; line-height: 1.5;">{{ training_program }}</div>
+    </div>
     {% endif %}
     
-    <br><br>
-    <nav>
-        <a href="/track">Track Performance</a> | <a href="/progress">View Progress</a>
-    </nav>
-</body>
-</html>
+    <div class="section">
+        <h3>🎯 Fonctionnalités</h3>
+        <div style="display: grid; gap: var(--spacing-md); margin-top: var(--spacing-lg);">
+            <div class="card" style="padding: var(--spacing-md);">
+                <h4 style="color: var(--accent); margin-bottom: var(--spacing-xs);">📊 Suivi des performances</h4>
+                <p style="margin-bottom: 0; font-size: 0.9rem;">Enregistrez vos séances d'entraînement</p>
+            </div>
+            <div class="card" style="padding: var(--spacing-md);">
+                <h4 style="color: var(--accent); margin-bottom: var(--spacing-xs);">📈 Analyse des progrès</h4>
+                <p style="margin-bottom: 0; font-size: 0.9rem;">Visualisez votre évolution dans le temps</p>
+            </div>
+            <div class="card" style="padding: var(--spacing-md);">
+                <h4 style="color: var(--accent); margin-bottom: var(--spacing-xs);">🤖 Coaching IA</h4>
+                <p style="margin-bottom: 0; font-size: 0.9rem;">Programmes personnalisés et conseils adaptés</p>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

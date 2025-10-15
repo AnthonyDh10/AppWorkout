@@ -1,28 +1,80 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <title>Track Performance - AI Fitness Coach</title>
-</head>
-<body>
-    <h1>Track Your Performance</h1>
-    <form method="post">
-        <label for="exercise">Exercise:</label><br>
-        <input type="text" id="exercise" name="exercise" required><br><br>
-        
-        <label for="sets">Sets:</label><br>
-        <input type="number" id="sets" name="sets" required><br><br>
-        
-        <label for="reps">Reps:</label><br>
-        <input type="number" id="reps" name="reps" required><br><br>
-        
-        <label for="weight">Weight (kg):</label><br>
-        <input type="number" id="weight" name="weight" step="0.5" required><br><br>
-        
-        <input type="submit" value="Track Performance">
-    </form>
+{% extends "base.html" %}
+
+{% block title %}Suivi Performance - AI Fitness Coach{% endblock %}
+
+{% block content %}
+<div class="fade-in">
+    <h1>📊 Suivi des Performances</h1>
     
-    <br>
-    <a href="/">Back to Home</a> | <a href="/progress">View Progress</a>
-</body>
-</html>
+    <div class="card">
+        <h2>Enregistrer une séance</h2>
+        <p>Saisissez les détails de votre exercice pour suivre vos progrès.</p>
+        
+        <form method="post">
+            <label for="exercise">🏋️ Exercice :</label>
+            <input 
+                type="text" 
+                id="exercise" 
+                name="exercise" 
+                placeholder="Ex: Développé couché, Squat, Deadlift..."
+                required
+            >
+            
+            <label for="sets">🔢 Nombre de séries :</label>
+            <input 
+                type="number" 
+                id="sets" 
+                name="sets" 
+                min="1" 
+                max="20"
+                placeholder="3"
+                required
+            >
+            
+            <label for="reps">🔁 Répétitions par série :</label>
+            <input 
+                type="number" 
+                id="reps" 
+                name="reps" 
+                min="1" 
+                max="100"
+                placeholder="12"
+                required
+            >
+            
+            <label for="weight">⚖️ Poids (kg) :</label>
+            <input 
+                type="number" 
+                id="weight" 
+                name="weight" 
+                step="0.5" 
+                min="0"
+                placeholder="50.0"
+                required
+            >
+            
+            <button type="submit" class="btn btn-primary btn-full">
+                ✅ Enregistrer la performance
+            </button>
+        </form>
+    </div>
+    
+    <div class="card">
+        <h3>💡 Conseils de suivi</h3>
+        <ul style="list-style: none; padding: 0;">
+            <li style="margin-bottom: var(--spacing-sm); color: var(--text-secondary);">
+                <span style="color: var(--accent);">•</span> Soyez précis dans vos mesures
+            </li>
+            <li style="margin-bottom: var(--spacing-sm); color: var(--text-secondary);">
+                <span style="color: var(--accent);">•</span> Enregistrez immédiatement après l'exercice
+            </li>
+            <li style="margin-bottom: var(--spacing-sm); color: var(--text-secondary);">
+                <span style="color: var(--accent);">•</span> Notez la technique et les sensations
+            </li>
+            <li style="margin-bottom: 0; color: var(--text-secondary);">
+                <span style="color: var(--accent);">•</span> Restez régulier dans vos mesures
+            </li>
+        </ul>
+    </div>
+</div>
+{% endblock %}
