@@ -1,0 +1,14 @@
+<svg width="192" height="192" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#0D1B2A"/>
+      <stop offset="100%" style="stop-color:#1B263B"/>
+    </linearGradient>
+  </defs>
+  <rect width="192" height="192" fill="url(#bg)" rx="20"/>
+  <circle cx="96" cy="96" r="70" fill="#F4A261"/>
+  <rect x="60" y="88" width="72" height="16" fill="#0D1B2A"/>
+  <rect x="55" y="76" width="20" height="40" fill="#0D1B2A"/>
+  <rect x="117" y="76" width="20" height="40" fill="#0D1B2A"/>
+  <text x="96" y="130" text-anchor="middle" fill="#E9C46A" font-family="Arial" font-size="20" font-weight="bold">AI</text>
+</svg>

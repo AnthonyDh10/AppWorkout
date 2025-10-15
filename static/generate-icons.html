@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Générateur d'icônes PWA</title>
+    <style>
+        body { font-family: Arial; padding: 20px; background: #0D1B2A; color: white; }
+        canvas { border: 1px solid #F4A261; margin: 10px; }
+        .icon-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 20px; }
+        button { background: #F4A261; color: #0D1B2A; border: none; padding: 10px 20px; margin: 5px; border-radius: 5px; cursor: pointer; }
+    </style>
+</head>
+<body>
+    <h1>🏋️ Générateur d'Icônes PWA - AI Fitness Coach</h1>
+    
+    <button onclick="generateAllIcons()">Générer toutes les icônes</button>
+    <button onclick="downloadAll()">Télécharger tout</button>
+    
+    <div class="icon-grid" id="iconGrid"></div>
+
+    <script>
+        const sizes = [72, 96, 128, 144, 152, 192, 384, 512];
+        const canvases = {};
+
+        function createIcon(size) {
+            const canvas = document.createElement('canvas');
+            canvas.width = size;
+            canvas.height = size;
+            const ctx = canvas.getContext('2d');
+
+            // Arrière-plan dégradé
+            const gradient = ctx.createLinearGradient(0, 0, size, size);
+            gradient.addColorStop(0, '#0D1B2A');
+            gradient.addColorStop(1, '#1B263B');
+            ctx.fillStyle = gradient;
+            ctx.fillRect(0, 0, size, size);
+
+            // Cercle de fond
+            ctx.beginPath();
+            ctx.arc(size/2, size/2, size*0.4, 0, 2 * Math.PI);
+            ctx.fillStyle = '#F4A261';
+            ctx.fill();
+
+            // Icône haltère stylisée
+            ctx.fillStyle = '#0D1B2A';
+            const centerX = size / 2;
+            const centerY = size / 2;
+            const barWidth = size * 0.4;
+            const barHeight = size * 0.08;
+            const weightSize = size * 0.12;
+
+            // Barre centrale
+            ctx.fillRect(centerX - barWidth/2, centerY - barHeight/2, barWidth, barHeight);
+
+            // Poids gauche
+            ctx.fillRect(centerX - barWidth/2 - weightSize/2, centerY - weightSize/2, weightSize, weightSize);
+            
+            // Poids droite
+            ctx.fillRect(centerX + barWidth/2 - weightSize/2, centerY - weightSize/2, weightSize, weightSize);
+
+            // Emoji ou texte pour les grandes tailles
+            if (size >= 144) {
+                ctx.fillStyle = '#E9C46A';
+                ctx.font = `bold ${size * 0.15}px Arial`;
+                ctx.textAlign = 'center';
+                ctx.fillText('AI', centerX, centerY + size * 0.25);
+            }
+
+            return canvas;
+        }
+
+        function generateAllIcons() {
+            const grid = document.getElementById('iconGrid');
+            grid.innerHTML = '';
+
+            sizes.forEach(size => {
+                const canvas = createIcon(size);
+                canvases[size] = canvas;
+
+                const container = document.createElement('div');
+                container.innerHTML = `
+                    <h3>Icône ${size}x${size}</h3>
+                    <div style="background: white; padding: 10px; display: inline-block; border-radius: 10px;">
+                        ${canvas.outerHTML}
+                    </div>
+                    <br>
+                    <button onclick="downloadIcon(${size})">Télécharger ${size}x${size}</button>
+                `;
+                grid.appendChild(container);
+            });
+        }
+
+        function downloadIcon(size) {
+            const canvas = canvases[size];
+            const link = document.createElement('a');
+            link.download = `icon-${size}x${size}.png`;
+            link.href = canvas.toDataURL('image/png');
+            link.click();
+        }
+
+        function downloadAll() {
+            sizes.forEach(size => {
+                setTimeout(() => downloadIcon(size), size * 10); // Délai pour éviter les blocages
+            });
+        }
+
+        // Génération automatique au chargement
+        window.onload = generateAllIcons;
+    </script>
+</body>
+</html>

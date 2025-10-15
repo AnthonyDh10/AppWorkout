@@ -107,6 +107,17 @@ def view_progress():
         entries = cur.fetchall()
     return render_template('progress.html', entries=entries)
 
+@app.route('/manifest.json')
+def manifest():
+    return app.send_static_file('manifest.json')
+
+@app.route('/sw.js')
+def service_worker():
+    response = app.send_static_file('sw.js')
+    response.headers['Content-Type'] = 'application/javascript'
+    response.headers['Service-Worker-Allowed'] = '/'
+    return response
+
 if __name__ == '__main__':  
     init_db()
     app.run(debug=True)

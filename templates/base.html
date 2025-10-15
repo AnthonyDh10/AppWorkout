@@ -2,12 +2,59 @@
 <html lang="fr">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
     <title>{% block title %}AI Fitness Coach{% endblock %}</title>
+    
+    <!-- PWA Meta Tags -->
+    <meta name="description" content="Application de coaching sportif personnalisé avec intelligence artificielle. Créez vos programmes d'entraînement et suivez vos progrès.">
+    <meta name="keywords" content="fitness, coaching, sport, IA, entraînement, musculation">
+    <meta name="author" content="AI Fitness Coach">
+    <meta name="robots" content="index, follow">
+    
+    <!-- PWA Manifest -->
+    <link rel="manifest" href="{{ url_for('manifest') }}">
+    
+    <!-- Theme Colors -->
+    <meta name="theme-color" content="#F4A261">
+    <meta name="msapplication-TileColor" content="#0D1B2A">
+    <meta name="msapplication-config" content="/static/browserconfig.xml">
+    
+    <!-- iOS Specific Meta Tags -->
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="FitnessAI">
+    <meta name="format-detection" content="telephone=no">
+    
+    <!-- iOS Icons -->
+    <link rel="apple-touch-icon" sizes="180x180" href="{{ url_for('static', filename='icons/icon-192x192.svg') }}">
+    <link rel="apple-touch-icon" sizes="152x152" href="{{ url_for('static', filename='icons/icon-152x152.svg') }}">
+    <link rel="apple-touch-icon" sizes="144x144" href="{{ url_for('static', filename='icons/icon-144x144.svg') }}">
+    <link rel="apple-touch-icon" sizes="120x120" href="{{ url_for('static', filename='icons/icon-128x128.svg') }}">
+    
+    <!-- Standard Icons -->
+    <link rel="icon" type="image/svg+xml" href="{{ url_for('static', filename='icons/icon-192x192.svg') }}">
+    <link rel="icon" type="image/png" sizes="32x32" href="{{ url_for('static', filename='icons/icon-192x192.svg') }}">
+    <link rel="icon" type="image/png" sizes="16x16" href="{{ url_for('static', filename='icons/icon-192x192.svg') }}">
+    
+    <!-- Android -->
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="application-name" content="FitnessAI">
+    
+    <!-- Windows -->
+    <meta name="msapplication-starturl" content="/">
+    <meta name="msapplication-navbutton-color" content="#F4A261">
+    
+    <!-- CSS -->
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    
+    <!-- Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    
+    <!-- Preload important resources -->
+    <link rel="preload" href="{{ url_for('static', filename='css/style.css') }}" as="style">
+    <link rel="preload" href="{{ url_for('static', filename='sw.js') }}" as="script">
 </head>
 <body>
     <div class="container">
@@ -30,5 +77,187 @@
             </a>
         </div>
     </nav>
+
+    <!-- PWA Installation Banner -->
+    <div id="installBanner" class="install-banner" style="display: none;">
+        <div class="install-content">
+            <div class="install-icon">📱</div>
+            <div class="install-text">
+                <h3>Installer l'application</h3>
+                <p>Ajoutez AI Fitness Coach à votre écran d'accueil pour une expérience optimale</p>
+            </div>
+            <button id="installButton" class="btn btn-primary">Installer</button>
+            <button id="dismissInstall" class="btn btn-secondary">Plus tard</button>
+        </div>
+    </div>
+
+    <!-- PWA JavaScript -->
+    <script>
+        // Variables globales PWA
+        let deferredPrompt;
+        let installBanner = document.getElementById('installBanner');
+        let installButton = document.getElementById('installButton');
+        let dismissButton = document.getElementById('dismissInstall');
+
+        // Enregistrement du Service Worker
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', async () => {
+                try {
+                    const registration = await navigator.serviceWorker.register('/sw.js', {
+                        scope: '/'
+                    });
+                    
+                    console.log('✅ Service Worker enregistré:', registration.scope);
+                    
+                    // Vérifier les mises à jour
+                    registration.addEventListener('updatefound', () => {
+                        const newWorker = registration.installing;
+                        newWorker.addEventListener('statechange', () => {
+                            if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+                                showUpdateAvailable();
+                            }
+                        });
+                    });
+                    
+                } catch (error) {
+                    console.error('❌ Erreur Service Worker:', error);
+                }
+            });
+        }
+
+        // Gestion de l'installation PWA
+        window.addEventListener('beforeinstallprompt', (e) => {
+            console.log('💡 Prompt d\'installation PWA disponible');
+            e.preventDefault();
+            deferredPrompt = e;
+
+            // Vérifier si l'app n'est pas déjà installée
+            if (!window.matchMedia('(display-mode: standalone)').matches) {
+                showInstallBanner();
+            }
+        });
+
+        // Afficher la bannière d'installation
+        function showInstallBanner() {
+            // Ne pas afficher si déjà rejeté récemment
+            if (localStorage.getItem('installDismissed')) {
+                const dismissTime = parseInt(localStorage.getItem('installDismissTime'));
+                const daysSince = (Date.now() - dismissTime) / (1000 * 60 * 60 * 24);
+                if (daysSince < 7) return; // Attendre 7 jours
+            }
+
+            installBanner.style.display = 'block';
+            setTimeout(() => {
+                installBanner.classList.add('show');
+            }, 1000);
+        }
+
+        // Installation de l'app
+        installButton.addEventListener('click', async () => {
+            if (!deferredPrompt) return;
+
+            installBanner.style.display = 'none';
+            deferredPrompt.prompt();
+
+            const { outcome } = await deferredPrompt.userChoice;
+            console.log('🎯 Choix utilisateur:', outcome);
+
+            if (outcome === 'accepted') {
+                console.log('✅ PWA installée');
+                localStorage.removeItem('installDismissed');
+                localStorage.removeItem('installDismissTime');
+            }
+
+            deferredPrompt = null;
+        });
+
+        // Rejeter l'installation
+        dismissButton.addEventListener('click', () => {
+            installBanner.style.display = 'none';
+            localStorage.setItem('installDismissed', 'true');
+            localStorage.setItem('installDismissTime', Date.now().toString());
+        });
+
+        // Détecter si l'app est lancée en mode standalone
+        window.addEventListener('DOMContentLoaded', () => {
+            if (window.matchMedia('(display-mode: standalone)').matches) {
+                console.log('🎉 Application lancée en mode standalone');
+                document.body.classList.add('standalone-mode');
+                
+                // Masquer les éléments non nécessaires en mode app
+                const elements = document.querySelectorAll('.hide-in-app');
+                elements.forEach(el => el.style.display = 'none');
+            }
+        });
+
+        // Notification de mise à jour disponible
+        function showUpdateAvailable() {
+            if ('Notification' in window && Notification.permission === 'granted') {
+                new Notification('Mise à jour disponible', {
+                    body: 'Une nouvelle version d\'AI Fitness Coach est disponible.',
+                    icon: '/static/icons/icon-192x192.svg',
+                    badge: '/static/icons/icon-72x72.svg'
+                });
+            }
+            
+            // Ou afficher une bannière dans l'app
+            const updateBanner = document.createElement('div');
+            updateBanner.className = 'update-banner';
+            updateBanner.innerHTML = `
+                <div class="update-content">
+                    <span>🔄 Mise à jour disponible</span>
+                    <button onclick="window.location.reload()" class="btn btn-secondary btn-small">Actualiser</button>
+                </div>
+            `;
+            document.body.insertBefore(updateBanner, document.body.firstChild);
+        }
+
+        // Gestion du mode hors ligne
+        window.addEventListener('online', () => {
+            console.log('🌐 Connexion rétablie');
+            document.body.classList.remove('offline');
+            showToast('Connexion rétablie', 'success');
+        });
+
+        window.addEventListener('offline', () => {
+            console.log('📱 Mode hors ligne');
+            document.body.classList.add('offline');
+            showToast('Mode hors ligne activé', 'info');
+        });
+
+        // Fonction utilitaire pour les toasts
+        function showToast(message, type = 'info') {
+            const toast = document.createElement('div');
+            toast.className = `toast toast-${type}`;
+            toast.textContent = message;
+            document.body.appendChild(toast);
+            
+            setTimeout(() => toast.classList.add('show'), 100);
+            setTimeout(() => {
+                toast.classList.remove('show');
+                setTimeout(() => document.body.removeChild(toast), 300);
+            }, 3000);
+        }
+
+        // Demander permission pour les notifications
+        if ('Notification' in window && Notification.permission === 'default') {
+            setTimeout(() => {
+                Notification.requestPermission().then(permission => {
+                    console.log('📬 Permission notifications:', permission);
+                });
+            }, 5000); // Attendre 5 secondes après le chargement
+        }
+
+        // Analytics basiques pour PWA
+        function trackPWAUsage(event, data = {}) {
+            console.log('📊 PWA Event:', event, data);
+            // Ici vous pourriez envoyer les données vers votre service d'analytics
+        }
+
+        // Tracker les événements PWA importants
+        if (window.matchMedia('(display-mode: standalone)').matches) {
+            trackPWAUsage('app_launched_standalone');
+        }
+    </script>
 </body>
 </html>

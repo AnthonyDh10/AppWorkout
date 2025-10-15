@@ -603,6 +603,258 @@ select:focus-visible {
 .hidden { display: none; }
 .visible { display: block; }
 
+/* ===== PWA STYLES ===== */
+
+/* Bannière d'installation */
+.install-banner {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
+  border-top: 2px solid var(--accent);
+  padding: var(--spacing-md);
+  transform: translateY(100%);
+  transition: transform var(--transition-normal);
+  z-index: 1001;
+  backdrop-filter: blur(10px);
+}
+
+.install-banner.show {
+  transform: translateY(0);
+}
+
+.install-content {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-md);
+  max-width: 600px;
+  margin: 0 auto;
+}
+
+.install-icon {
+  font-size: 2rem;
+  flex-shrink: 0;
+}
+
+.install-text {
+  flex-grow: 1;
+}
+
+.install-text h3 {
+  margin: 0 0 var(--spacing-xs) 0;
+  color: var(--accent);
+  font-size: 1.1rem;
+}
+
+.install-text p {
+  margin: 0;
+  font-size: 0.9rem;
+  color: var(--text-secondary);
+}
+
+.install-content .btn {
+  padding: var(--spacing-xs) var(--spacing-md);
+  font-size: 0.9rem;
+  min-width: auto;
+}
+
+/* Mode standalone (app installée) */
+.standalone-mode {
+  padding-top: env(safe-area-inset-top);
+  padding-bottom: calc(env(safe-area-inset-bottom) + 80px);
+}
+
+.standalone-mode .nav-bottom {
+  padding-bottom: env(safe-area-inset-bottom);
+}
+
+/* Bannière de mise à jour */
+.update-banner {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  background: var(--accent);
+  color: var(--primary);
+  padding: var(--spacing-sm);
+  text-align: center;
+  z-index: 1002;
+  animation: slideDown var(--transition-normal) ease-out;
+}
+
+.update-content {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--spacing-md);
+}
+
+.btn-small {
+  padding: var(--spacing-xs) var(--spacing-sm);
+  font-size: 0.8rem;
+  min-width: auto;
+}
+
+@keyframes slideDown {
+  from { transform: translateY(-100%); }
+  to { transform: translateY(0); }
+}
+
+/* Toasts de notification */
+.toast {
+  position: fixed;
+  top: var(--spacing-lg);
+  right: var(--spacing-lg);
+  background: var(--surface);
+  color: var(--text-primary);
+  padding: var(--spacing-md);
+  border-radius: var(--radius-medium);
+  box-shadow: var(--shadow-heavy);
+  transform: translateX(100%);
+  transition: transform var(--transition-normal);
+  z-index: 1003;
+  max-width: 300px;
+}
+
+.toast.show {
+  transform: translateX(0);
+}
+
+.toast-success {
+  border-left: 4px solid var(--success);
+}
+
+.toast-info {
+  border-left: 4px solid var(--accent);
+}
+
+.toast-warning {
+  border-left: 4px solid var(--warning);
+}
+
+.toast-error {
+  border-left: 4px solid var(--error);
+}
+
+/* Mode hors ligne */
+.offline {
+  filter: grayscale(20%);
+}
+
+.offline::before {
+  content: '🔌 Mode hors ligne';
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  background: var(--warning);
+  color: var(--primary);
+  text-align: center;
+  padding: var(--spacing-xs);
+  font-size: 0.9rem;
+  font-weight: 600;
+  z-index: 1000;
+}
+
+.offline .container {
+  margin-top: 40px;
+}
+
+/* Optimisations pour les appareils iOS */
+@supports (-webkit-touch-callout: none) {
+  .standalone-mode {
+    padding-top: 44px; /* Status bar iOS */
+  }
+  
+  .standalone-mode.has-notch {
+    padding-top: 44px; /* Notch area */
+  }
+}
+
+/* Optimisations pour Android */
+@media (display-mode: standalone) {
+  body {
+    user-select: none; /* Éviter la sélection accidentelle */
+    -webkit-touch-callout: none;
+    -webkit-user-select: none;
+  }
+  
+  input, textarea {
+    user-select: text;
+    -webkit-user-select: text;
+  }
+}
+
+/* Splash screen styles */
+.splash-screen {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  z-index: 9999;
+  animation: fadeOut 1s ease-out 2s forwards;
+}
+
+.splash-logo {
+  width: 120px;
+  height: 120px;
+  background: var(--accent);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 3rem;
+  margin-bottom: var(--spacing-lg);
+  animation: pulse 2s infinite;
+}
+
+.splash-text {
+  color: var(--text-primary);
+  font-size: 1.5rem;
+  font-weight: 600;
+  text-align: center;
+}
+
+@keyframes fadeOut {
+  to {
+    opacity: 0;
+    visibility: hidden;
+  }
+}
+
+@keyframes pulse {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.05); }
+}
+
+/* ===== RESPONSIVE PWA ===== */
+@media (max-width: 480px) {
+  .install-content {
+    flex-direction: column;
+    text-align: center;
+    gap: var(--spacing-sm);
+  }
+  
+  .install-content .btn {
+    width: 100%;
+    margin: var(--spacing-xs) 0;
+  }
+  
+  .toast {
+    top: var(--spacing-sm);
+    right: var(--spacing-sm);
+    left: var(--spacing-sm);
+    max-width: none;
+  }
+}
+
 /* ===== PRINT STYLES ===== */
 @media print {
   body {
@@ -611,7 +863,10 @@ select:focus-visible {
   }
   
   .nav-bottom,
-  .btn {
+  .btn,
+  .install-banner,
+  .update-banner,
+  .toast {
     display: none;
   }
 }
