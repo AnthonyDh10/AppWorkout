@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Progress - AI Fitness Coach</title>
+</head>
+<body>
+    <h1>Your Progress</h1>
+    
+    {% if entries %}
+    <table border="1">
+        <tr>
+            <th>Date</th>
+            <th>Exercise</th>
+            <th>Sets</th>
+            <th>Reps</th>
+            <th>Weight (kg)</th>
+        </tr>
+        {% for entry in entries %}
+        <tr>
+            <td>{{ entry[5] }}</td>
+            <td>{{ entry[1] }}</td>
+            <td>{{ entry[2] }}</td>
+            <td>{{ entry[3] }}</td>
+            <td>{{ entry[4] }}</td>
+        </tr>
+        {% endfor %}
+    </table>
+    {% else %}
+    <p>No performance data recorded yet.</p>
+    {% endif %}
+    
+    <br>
+    <a href="/">Back to Home</a> | <a href="/track">Track Performance</a>
+</body>
+</html>
