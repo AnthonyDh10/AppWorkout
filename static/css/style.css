@@ -251,10 +251,50 @@ textarea {
   transform: translateY(-2px);
 }
 
+/* Bouton outline (contour) */
+.btn-outline {
+  background: transparent;
+  color: var(--accent);
+  border: 2px solid var(--accent);
+}
+
+.btn-outline:hover {
+  background: var(--accent);
+  color: var(--primary);
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-medium);
+}
+
+/* Bouton danger */
+.btn-danger {
+  background: var(--error);
+  color: white;
+  border: 2px solid var(--error);
+}
+
+.btn-danger:hover {
+  background: #b91c1c;
+  border-color: #b91c1c;
+  transform: translateY(-2px);
+}
+
 /* Bouton pleine largeur */
 .btn-full {
   width: 100%;
   margin-bottom: var(--spacing-md);
+}
+
+/* Tailles de boutons */
+.btn-small {
+  padding: var(--spacing-xs) var(--spacing-sm);
+  font-size: 0.85rem;
+  min-width: 80px;
+}
+
+.btn-large {
+  padding: var(--spacing-md) var(--spacing-xl);
+  font-size: 1.1rem;
+  min-width: 150px;
 }
 
 /* ===== NAVIGATION FIXE ===== */
@@ -690,11 +730,7 @@ select:focus-visible {
   gap: var(--spacing-md);
 }
 
-.btn-small {
-  padding: var(--spacing-xs) var(--spacing-sm);
-  font-size: 0.8rem;
-  min-width: auto;
-}
+
 
 @keyframes slideDown {
   from { transform: translateY(-100%); }

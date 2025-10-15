@@ -4,8 +4,7 @@
 
 {% block content %}
 <div class="fade-in">
-    <div class="header-with-back">
-        <a href="/track" class="btn btn-outline">⬅️ Retour aux séances</a>
+    <div class="session-header-main">
         <h1>📋 Détail de la Séance</h1>
     </div>
     
@@ -40,47 +39,63 @@
                 </div>
             </div>
             {% endfor %}
-            
-            <div class="session-summary">
+              <div class="session-summary">
                 <h4>📊 Résumé de la séance</h4>
-                <p><strong>Nombre d'exercices:</strong> {{ exercises|length }}</p>
-                <p><strong>Volume total:</strong> 
-                    {% set total_volume = 0 %}
-                    {% for exercise in exercises %}
-                        {% set total_volume = total_volume + (exercise[3] * exercise[4] * exercise[5]) %}
-                    {% endfor %}
-                    {{ total_volume }} kg
-                </p>
-                <p><strong>Séries totales:</strong> 
-                    {% set total_sets = 0 %}
-                    {% for exercise in exercises %}
-                        {% set total_sets = total_sets + exercise[3] %}
-                    {% endfor %}
-                    {{ total_sets }}
-                </p>
+                <div class="summary-grid">
+                    <div class="summary-card">
+                        <span class="summary-number">{{ exercises|length }}</span>
+                        <span class="summary-label">Exercices</span>
+                    </div>
+                    <div class="summary-card">
+                        <span class="summary-number">{{ session_stats.total_sets }}</span>
+                        <span class="summary-label">Séries totales</span>
+                    </div>
+                    <div class="summary-card">
+                        <span class="summary-number">{{ "%.1f"|format(session_stats.total_volume) }}</span>
+                        <span class="summary-label">Volume total (kg)</span>
+                    </div>
+                </div>
             </div>
-        </div>
-        {% else %}
+        </div>        {% else %}
         <p class="no-exercises">Aucun exercice enregistré dans cette séance.</p>
         {% endif %}
+        
+        <div class="session-actions">
+            <a href="/track" class="btn btn-outline btn-large">
+                ⬅️ Retour aux séances
+            </a>
+        </div>
     </div>
     {% else %}
     <div class="card">
         <p class="error">Séance introuvable.</p>
+        <div class="session-actions">
+            <a href="/track" class="btn btn-primary">
+                ⬅️ Retour aux séances
+            </a>
+        </div>
     </div>
     {% endif %}
 </div>
 
 <style>
-.header-with-back {
-    display: flex;
-    align-items: center;
-    gap: 20px;
-    margin-bottom: 20px;
+.session-header-main {
+    text-align: center;
+    margin-bottom: 30px;
 }
 
-.header-with-back h1 {
+.session-header-main h1 {
     margin: 0;
+    color: var(--accent);
+}
+
+.session-actions {
+    display: flex;
+    justify-content: center;
+    gap: 15px;
+    margin-top: 30px;
+    padding-top: 20px;
+    border-top: 1px solid rgba(255, 255, 255, 0.1);
 }
 
 .session-header {
@@ -148,21 +163,55 @@
 }
 
 .session-summary {
-    background: var(--card-bg);
-    border: 2px solid var(--primary-color);
-    border-radius: 12px;
-    padding: 20px;
+    background: linear-gradient(135deg, var(--accent), var(--accent-secondary));
+    color: var(--primary);
+    border-radius: 15px;
+    padding: 25px;
     margin-top: 30px;
 }
 
 .session-summary h4 {
-    margin: 0 0 15px 0;
-    color: var(--primary-color);
+    margin: 0 0 20px 0;
+    color: var(--primary);
+    text-align: center;
+    font-size: 1.3rem;
 }
 
-.session-summary p {
-    margin: 8px 0;
-    color: var(--text-primary);
+.summary-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+    gap: 20px;
+}
+
+.summary-card {
+    background: rgba(13, 27, 42, 0.8);
+    border-radius: 12px;
+    padding: 20px;
+    text-align: center;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    transition: all 0.3s ease;
+}
+
+.summary-card:hover {
+    transform: scale(1.05);
+}
+
+.summary-number {
+    font-size: 2rem;
+    font-weight: 700;
+    color: var(--accent);
+    margin-bottom: 8px;
+    display: block;
+}
+
+.summary-label {
+    font-size: 0.9rem;
+    color: var(--text-secondary);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    font-weight: 500;
 }
 
 .no-exercises {

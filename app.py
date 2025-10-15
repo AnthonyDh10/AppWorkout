@@ -182,7 +182,23 @@ def view_session(session_id):
         cur.execute("SELECT * FROM exercises WHERE session_id = ?", (session_id,))
         exercises = cur.fetchall()
         
-    return render_template('session_detail.html', session=session, exercises=exercises)
+        # Calculer les statistiques de la séance
+        session_stats = {
+            'total_sets': 0,
+            'total_volume': 0.0
+        }
+        
+        if exercises:
+            for exercise in exercises:
+                # exercise = [id, session_id, exercise_name, sets, reps, weight]
+                sets = exercise[3]
+                reps = exercise[4]
+                weight = exercise[5]
+                
+                session_stats['total_sets'] += sets
+                session_stats['total_volume'] += (sets * reps * weight)
+        
+    return render_template('session_detail.html', session=session, exercises=exercises, session_stats=session_stats)
 
 @app.route('/progress')
 def view_progress():
