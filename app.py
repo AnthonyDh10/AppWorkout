@@ -28,7 +28,7 @@ def home():
     training_program = None
     if request.method == 'POST':
         user_prompt = request.form['prompt']
-        model = genai.GenerativeModel('gemini-1.5-flash')
+        model = genai.GenerativeModel('gemini-flash-latest')
         response = model.generate_content(f"Create a personalized training program for: {user_prompt}")
         training_program = response.text
     return render_template('index.html', training_program=training_program)
