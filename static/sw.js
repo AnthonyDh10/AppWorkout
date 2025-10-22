@@ -10,16 +10,12 @@ const STATIC_ASSETS = [
   '/static/manifest.json',
   '/track',
   '/progress',
-  // Icônes
-  '/static/icons/icon-192x192.png',
-  '/static/icons/icon-512x512.png',
   // Polices Google Fonts (si utilisées)
   'https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap'
 ];
 
 // Ressources dynamiques à mettre en cache après la première utilisation
 const DYNAMIC_ASSETS = [
-  '/static/icons/',
   '/static/screenshots/'
 ];
 
@@ -213,8 +209,6 @@ self.addEventListener('push', event => {
   
   const options = {
     body: event.data ? event.data.text() : 'Nouvelle notification!',
-    icon: '/static/icons/icon-192x192.png',
-    badge: '/static/icons/icon-72x72.png',
     vibrate: [100, 50, 100],
     data: {
       dateOfArrival: Date.now(),
@@ -223,13 +217,11 @@ self.addEventListener('push', event => {
     actions: [
       {
         action: 'explore',
-        title: 'Voir l\'application',
-        icon: '/static/icons/icon-96x96.png'
+        title: 'Voir l\'application'
       },
       {
         action: 'close',
-        title: 'Fermer',
-        icon: '/static/icons/close.png'
+        title: 'Fermer'
       }
     ]
   };
