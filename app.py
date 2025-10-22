@@ -58,8 +58,14 @@ def init_db():
     except Exception as e:
         print(f"❌ Erreur inattendue lors de l'initialisation: {e}")
 
-@app.route('/', methods=['GET', 'POST'])
+@app.route('/')
 def home():
+    """Page d'accueil - vide pour le moment, en attente de nouvelles fonctionnalités"""
+    return render_template('index.html')
+
+@app.route('/ai', methods=['GET', 'POST'])
+def ai_coach():
+    """Génération de programmes d'entraînement avec l'IA"""
     training_program = None
     training_program_html = None
     if request.method == 'POST':
@@ -119,7 +125,7 @@ def home():
             training_program_html = markdown.markdown(training_program, extensions=['extra', 'codehilite'])
             print(f"Erreur Gemini API: {e}")
             
-    return render_template('index.html', training_program=training_program, training_program_html=training_program_html)
+    return render_template('ai.html', training_program=training_program, training_program_html=training_program_html)
 
 @app.route('/track', methods=['GET', 'POST'])
 def track_performance():

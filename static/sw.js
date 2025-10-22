@@ -6,10 +6,11 @@ const DYNAMIC_CACHE = 'dynamic-cache-v1';
 // Ressources à mettre en cache immédiatement
 const STATIC_ASSETS = [
   '/',
-  '/static/css/style.css',
-  '/static/manifest.json',
+  '/ai',
   '/track',
   '/progress',
+  '/static/css/style.css',
+  '/static/manifest.json',
   // Polices Google Fonts (si utilisées)
   'https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap'
 ];

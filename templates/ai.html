@@ -1,0 +1,56 @@
+{% extends "base.html" %}
+
+{% block title %}Coach IA - AI Fitness Coach{% endblock %}
+
+{% block content %}
+<div class="fade-in">
+    <h1>🤖 Coach IA</h1>
+    
+    <div class="card">
+        <h2>Créez votre programme personnalisé</h2>
+        <p>Décrivez vos objectifs fitness et obtenez un programme d'entraînement sur mesure généré par IA.</p>
+        
+        <form method="post">
+            <label for="prompt">Décrivez vos objectifs fitness :</label>
+            <textarea 
+                id="prompt" 
+                name="prompt" 
+                placeholder="Ex: Je veux perdre du poids, gagner en muscle, améliorer mon endurance..."
+                required
+            ></textarea>
+            <button type="submit" class="btn btn-primary btn-full">
+                🚀 Générer mon programme
+            </button>
+        </form>
+    </div>
+
+    {% if training_program_html %}
+    <div class="card fade-in">
+        <h2>📋 Votre Programme d'Entraînement</h2>
+        <div class="training-program-content">
+            {{ training_program_html|safe }}
+        </div>
+    </div>
+    {% endif %}
+    
+    <div class="section">
+        <h3>💡 Comment utiliser le Coach IA</h3>
+        <div class="card" style="padding: var(--spacing-md);">
+            <ul style="list-style: none; padding: 0;">
+                <li style="margin-bottom: var(--spacing-sm); color: var(--text-secondary);">
+                    <span style="color: var(--accent);">•</span> Soyez précis dans vos objectifs
+                </li>
+                <li style="margin-bottom: var(--spacing-sm); color: var(--text-secondary);">
+                    <span style="color: var(--accent);">•</span> Mentionnez votre niveau (débutant, intermédiaire, avancé)
+                </li>
+                <li style="margin-bottom: var(--spacing-sm); color: var(--text-secondary);">
+                    <span style="color: var(--accent);">•</span> Indiquez vos contraintes (temps, matériel disponible)
+                </li>
+                <li style="margin-bottom: 0; color: var(--text-secondary);">
+                    <span style="color: var(--accent);">•</span> N'hésitez pas à demander des variantes ou alternatives
+                </li>
+            </ul>
+        </div>
+    </div>
+</div>
+{% endblock %}
