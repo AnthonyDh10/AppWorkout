@@ -60,8 +60,30 @@ def init_db():
 
 @app.route('/')
 def home():
-    """Page d'accueil - vide pour le moment, en attente de nouvelles fonctionnalités"""
-    return render_template('index.html')
+    """Page d'accueil - affiche les séances disponibles"""
+    sessions = []
+    
+    try:
+        with sqlite3.connect('database.db') as conn:
+            cur = conn.cursor()
+            # Récupérer toutes les séances distinctes avec leur date la plus récente
+            cur.execute("""
+                SELECT 
+                    name,
+                    MAX(date) as last_date,
+                    COUNT(*) as session_count
+                FROM sessions
+                WHERE name IS NOT NULL AND name != ''
+                GROUP BY name
+                ORDER BY last_date DESC
+            """)
+            sessions = cur.fetchall()
+    except sqlite3.Error as e:
+        print(f"❌ Erreur lors de la récupération des séances: {e}")
+    except Exception as e:
+        print(f"❌ Erreur inattendue: {e}")
+    
+    return render_template('index.html', sessions=sessions)
 
 @app.route('/ai', methods=['GET', 'POST'])
 def ai_coach():
@@ -126,6 +148,46 @@ def ai_coach():
             print(f"Erreur Gemini API: {e}")
             
     return render_template('ai.html', training_program=training_program, training_program_html=training_program_html)
+
+@app.route('/start-session/<session_name>')
+def start_session(session_name):
+    """Démarrer une nouvelle séance basée sur un template existant"""
+    # Récupérer les exercices de la dernière séance avec ce nom
+    exercises = []
+    
+    try:
+        with sqlite3.connect('database.db') as conn:
+            cur = conn.cursor()
+            # Trouver la dernière séance avec ce nom
+            cur.execute("""
+                SELECT id FROM sessions 
+                WHERE name = ? 
+                ORDER BY date DESC 
+                LIMIT 1
+            """, (session_name,))
+            
+            last_session = cur.fetchone()
+            
+            if last_session:
+                session_id = last_session[0]
+                # Récupérer les exercices de cette séance
+                cur.execute("""
+                    SELECT exercise_name, sets, reps, weight 
+                    FROM exercises 
+                    WHERE session_id = ?
+                    ORDER BY id
+                """, (session_id,))
+                exercises = cur.fetchall()
+                
+    except sqlite3.Error as e:
+        print(f"❌ Erreur lors de la récupération de la séance template: {e}")
+    
+    # Rediriger vers la page de suivi avec les données pré-remplies
+    return render_template('track.html', 
+                         session_template_name=session_name, 
+                         template_exercises=exercises,
+                         message=None,
+                         recent_sessions=[])
 
 @app.route('/track', methods=['GET', 'POST'])
 def track_performance():
