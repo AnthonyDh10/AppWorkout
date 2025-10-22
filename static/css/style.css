@@ -231,6 +231,12 @@ p {
   color: var(--accent-secondary);
 }
 
+.session-days {
+  font-weight: 600;
+  color: var(--accent-secondary);
+  font-size: 1rem;
+}
+
 .session-separator {
   color: var(--text-muted);
 }

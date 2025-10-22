@@ -116,12 +116,12 @@ def home():
     try:
         with sqlite3.connect('database.db') as conn:
             cur = conn.cursor()
-            # Récupérer toutes les séances distinctes avec leur date la plus récente
+            # Récupérer toutes les séances distinctes avec le nombre de jours depuis la dernière
             cur.execute("""
                 SELECT 
                     name,
                     MAX(date) as last_date,
-                    COUNT(*) as session_count
+                    CAST((julianday('now') - julianday(MAX(date))) AS INTEGER) as days_since
                 FROM sessions
                 WHERE name IS NOT NULL AND name != ''
                 GROUP BY name
