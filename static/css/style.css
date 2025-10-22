@@ -136,6 +136,125 @@ p {
   margin-bottom: var(--spacing-xxl);
 }
 
+/* ===== BOUTONS DE SÉANCES ===== */
+.sessions-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: var(--spacing-lg);
+  margin-bottom: var(--spacing-lg);
+}
+
+.session-button {
+  display: block;
+  background: linear-gradient(135deg, rgba(244, 162, 97, 0.15) 0%, rgba(233, 196, 106, 0.15) 100%);
+  backdrop-filter: blur(10px);
+  border: 2px solid rgba(244, 162, 97, 0.3);
+  border-radius: var(--radius-large);
+  padding: var(--spacing-xl);
+  text-decoration: none;
+  color: var(--text-primary);
+  transition: all var(--transition-normal);
+  box-shadow: var(--shadow-medium);
+  position: relative;
+  overflow: hidden;
+}
+
+.session-button::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: linear-gradient(135deg, rgba(244, 162, 97, 0.1) 0%, rgba(233, 196, 106, 0.1) 100%);
+  opacity: 0;
+  transition: opacity var(--transition-normal);
+}
+
+.session-button:hover::before,
+.session-button:active::before {
+  opacity: 1;
+}
+
+.session-button:hover {
+  transform: translateY(-4px) scale(1.02);
+  box-shadow: 0 12px 24px rgba(244, 162, 97, 0.3);
+  border-color: rgba(244, 162, 97, 0.6);
+}
+
+.session-button:active {
+  transform: translateY(-2px) scale(1.01);
+}
+
+.session-button-content {
+  position: relative;
+  z-index: 1;
+  text-align: center;
+}
+
+.session-icon {
+  font-size: 3rem;
+  margin-bottom: var(--spacing-md);
+  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.2));
+}
+
+.session-name {
+  font-size: 1.8rem;
+  font-weight: 700;
+  color: var(--accent);
+  margin-bottom: var(--spacing-sm);
+  text-transform: capitalize;
+  line-height: 1.3;
+}
+
+.session-info {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: var(--spacing-sm);
+  color: var(--text-secondary);
+  font-size: 0.95rem;
+  margin-top: var(--spacing-md);
+}
+
+.session-count {
+  font-weight: 600;
+  color: var(--accent-secondary);
+}
+
+.session-separator {
+  color: var(--text-muted);
+}
+
+.session-date {
+  color: var(--text-secondary);
+}
+
+.empty-state {
+  padding: var(--spacing-xxl) var(--spacing-lg);
+  text-align: center;
+}
+
+.empty-state h2 {
+  color: var(--text-primary);
+  margin-bottom: var(--spacing-md);
+}
+
+/* Responsive - 2 colonnes sur tablettes */
+@media (min-width: 768px) {
+  .sessions-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+  
+  .session-name {
+    font-size: 2rem;
+  }
+  
+  .session-icon {
+    font-size: 3.5rem;
+  }
+}
+
 /* ===== FORMULAIRES ===== */
 form {
   background: var(--card);

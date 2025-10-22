@@ -1,60 +1,66 @@
-{% extends "base.html" %}
+﻿{% extends "base.html" %}
 
 {% block title %}Accueil - AI Fitness Coach{% endblock %}
 
 {% block content %}
 <div class="fade-in">
-    <h1>💪 AI Fitness Coach</h1>
+    <h1> Mes Séances</h1>
     
-    <div class="card text-center">
-        <h2>Bienvenue dans votre application de coaching sportif</h2>
-        <p style="font-size: 1.1rem; margin: var(--spacing-lg) 0;">
-            Votre assistant personnel pour atteindre vos objectifs fitness
+    {% if sessions %}
+    <div class="section">
+        <p style="text-align: center; color: var(--text-secondary); margin-bottom: var(--spacing-lg);">
+            Choisissez une séance pour commencer votre entraînement
         </p>
         
-        <div style="display: grid; gap: var(--spacing-md); margin-top: var(--spacing-xl);">
-            <a href="/ai" class="btn btn-primary btn-full">
-                🤖 Créer un programme avec l'IA
+        <div class="sessions-grid">
+            {% for session in sessions %}
+            <a href="/start-session/{{ session[0]|urlencode }}" class="session-button">
+                <div class="session-button-content">
+                    <div class="session-icon"></div>
+                    <h2 class="session-name">{{ session[0] }}</h2>
+                    <div class="session-info">
+                        <span class="session-count">{{ session[2] }} séance{{ 's' if session[2] > 1 else '' }}</span>
+                        <span class="session-separator"></span>
+                        <span class="session-date">Dernière: {{ session[1][:10] }}</span>
+                    </div>
+                </div>
             </a>
-            <a href="/track" class="btn btn-secondary btn-full">
-                📊 Enregistrer une séance
-            </a>
-            <a href="/progress" class="btn btn-secondary btn-full">
-                📈 Voir mes progrès
+            {% endfor %}
+        </div>
+    </div>
+    
+    <div class="card" style="text-align: center; margin-top: var(--spacing-xl);">
+        <p style="color: var(--text-secondary); margin-bottom: var(--spacing-md);">
+            Envie de créer une nouvelle séance ?
+        </p>
+        <a href="/track" class="btn btn-secondary btn-full">
+             Créer une nouvelle séance
+        </a>
+    </div>
+    
+    {% else %}
+    <div class="card text-center">
+        <div class="empty-state">
+            <div style="font-size: 4rem; margin-bottom: var(--spacing-lg);"></div>
+            <h2>Aucune séance enregistrée</h2>
+            <p style="font-size: 1.1rem; margin: var(--spacing-lg) 0; color: var(--text-secondary);">
+                Commencez par créer votre première séance d'entraînement
+            </p>
+            <a href="/track" class="btn btn-primary btn-full" style="max-width: 300px; margin: 0 auto;">
+                 Créer ma première séance
             </a>
         </div>
     </div>
     
     <div class="section">
-        <h3>🎯 Fonctionnalités</h3>
-        <div style="display: grid; gap: var(--spacing-md); margin-top: var(--spacing-lg);">
-            <div class="card" style="padding: var(--spacing-md);">
-                <h4 style="color: var(--accent); margin-bottom: var(--spacing-xs);">🤖 Coach IA Personnalisé</h4>
-                <p style="margin-bottom: 0; font-size: 0.9rem;">Générez des programmes d'entraînement adaptés à vos objectifs avec l'intelligence artificielle</p>
-            </div>
-            <div class="card" style="padding: var(--spacing-md);">
-                <h4 style="color: var(--accent); margin-bottom: var(--spacing-xs);">📊 Suivi des performances</h4>
-                <p style="margin-bottom: 0; font-size: 0.9rem;">Enregistrez vos séances et suivez votre progression exercice par exercice</p>
-            </div>
-            <div class="card" style="padding: var(--spacing-md);">
-                <h4 style="color: var(--accent); margin-bottom: var(--spacing-xs);">📈 Analyse des progrès</h4>
-                <p style="margin-bottom: 0; font-size: 0.9rem;">Visualisez votre évolution et vos statistiques détaillées</p>
-            </div>
-            <div class="card" style="padding: var(--spacing-md);">
-                <h4 style="color: var(--accent); margin-bottom: var(--spacing-xs);">📱 Application PWA</h4>
-                <p style="margin-bottom: 0; font-size: 0.9rem;">Installez l'app sur votre smartphone pour une expérience optimale</p>
-            </div>
-        </div>
-    </div>
-    
-    <!-- Section à compléter avec de nouvelles fonctionnalités -->
-    <div class="section">
-        <h3>� Bientôt disponible</h3>
-        <div class="card" style="padding: var(--spacing-lg); text-align: center; opacity: 0.7;">
-            <p style="font-size: 1rem; color: var(--text-secondary);">
-                De nouvelles fonctionnalités arrivent bientôt !
+        <h3 style="text-align: center;"> Conseil</h3>
+        <div class="card" style="padding: var(--spacing-lg);">
+            <p style="text-align: center; color: var(--text-secondary); line-height: 1.7;">
+                Une fois votre première séance enregistrée, vous pourrez la retrouver ici 
+                et la relancer facilement pour vos prochains entraînements !
             </p>
         </div>
     </div>
+    {% endif %}
 </div>
 {% endblock %}
