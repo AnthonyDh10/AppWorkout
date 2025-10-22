@@ -5,12 +5,62 @@ from dotenv import load_dotenv
 import sqlite3
 import markdown
 import json
+from datetime import datetime
 
 load_dotenv() # Load environment variables from .env
 
 app = Flask(__name__)
 
 genai.configure(api_key=os.getenv("GEMINI_API_KEY"))
+
+def format_date(date_string):
+    """Convertit une date au format DD-MM-YYYY"""
+    if not date_string:
+        return ""
+    
+    try:
+        # Essayer différents formats de date
+        for fmt in ['%Y-%m-%d %H:%M:%S', '%Y-%m-%d', '%d-%m-%Y', '%d/%m/%Y']:
+            try:
+                dt = datetime.strptime(str(date_string)[:19], fmt)
+                return dt.strftime('%d-%m-%Y')
+            except ValueError:
+                continue
+        
+        # Si aucun format ne fonctionne, essayer de prendre juste les premiers caractères
+        if len(str(date_string)) >= 10:
+            # Format YYYY-MM-DD
+            parts = str(date_string)[:10].split('-')
+            if len(parts) == 3:
+                return f"{parts[2]}-{parts[1]}-{parts[0]}"
+        
+        return str(date_string)[:10]
+    except Exception as e:
+        print(f"Erreur de formatage de date: {e}")
+        return str(date_string)[:10]
+
+def format_datetime(date_string):
+    """Convertit une date au format DD-MM-YYYY HH:MM"""
+    if not date_string:
+        return ""
+    
+    try:
+        # Essayer différents formats de date
+        for fmt in ['%Y-%m-%d %H:%M:%S', '%Y-%m-%d', '%d-%m-%Y %H:%M:%S']:
+            try:
+                dt = datetime.strptime(str(date_string)[:19], fmt)
+                return dt.strftime('%d-%m-%Y %H:%M')
+            except ValueError:
+                continue
+        
+        return str(date_string)[:16]
+    except Exception as e:
+        print(f"Erreur de formatage de datetime: {e}")
+        return str(date_string)[:16]
+
+# Ajouter les filtres Jinja2
+app.jinja_env.filters['format_date'] = format_date
+app.jinja_env.filters['format_datetime'] = format_datetime
 
 def init_db():
     """Initialise la base de données avec gestion d'erreur"""

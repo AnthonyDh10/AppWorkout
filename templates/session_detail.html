@@ -12,7 +12,7 @@
     <div class="card">
         <div class="session-header">
             <h2>{{ session[1] or 'Séance sans nom' }}</h2>
-            <p class="session-date">📅 {{ session[2][:19] }}</p>
+            <p class="session-date">📅 {{ session[2]|format_date }}</p>
         </div>
         
         {% if exercises %}

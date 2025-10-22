@@ -95,7 +95,7 @@
                 <tbody>
                     {% for entry in entries %}
                     <tr>
-                        <td>{{ entry[5][:16] }}</td>
+                        <td>{{ entry[5]|format_date }}</td>
                         <td><strong>{{ entry[1] }}</strong></td>
                         <td>{{ entry[2] }}</td>
                         <td>{{ entry[3] }}</td>

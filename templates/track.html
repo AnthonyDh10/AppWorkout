@@ -64,7 +64,7 @@
                     <div class="session-item">
                         <div class="session-info">
                             <h3>{{ session[1] or 'Séance sans nom' }}</h3>
-                            <p>📅 {{ session[2][:19] }} | 🏋️ {{ session[3] }} exercice(s)</p>
+                            <p>📅 {{ session[2]|format_date }} | 🏋️ {{ session[3] }} exercice(s)</p>
                         </div>
                         <a href="/session/{{ session[0] }}" class="btn btn-primary">Voir détails</a>
                     </div>
