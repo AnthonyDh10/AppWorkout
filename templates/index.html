@@ -4,7 +4,7 @@
 
 {% block content %}
 <div class="fade-in">
-    <h1> Mes Séances</h1>
+    <h1>💪 Mes Séances</h1>
     
     {% if sessions %}
     <div class="section">
@@ -16,7 +16,6 @@
             {% for session in sessions %}
             <a href="/start-session/{{ session[0]|urlencode }}" class="session-button">
                 <div class="session-button-content">
-                    <div class="session-icon"></div>
                     <h2 class="session-name">{{ session[0] }}</h2>
                     <div class="session-info">
                         <span class="session-count">{{ session[2] }} séance{{ 's' if session[2] > 1 else '' }}</span>
@@ -28,30 +27,27 @@
     </div>
     
     <div class="card" style="text-align: center; margin-top: var(--spacing-xl);">
-        <p style="color: var(--text-secondary); margin-bottom: var(--spacing-md);">
-            Envie de créer une nouvelle séance ?
-        </p>
         <a href="/track" class="btn btn-secondary btn-full">
-             Créer une nouvelle séance
+            ➕ Créer une nouvelle séance
         </a>
     </div>
     
     {% else %}
     <div class="card text-center">
         <div class="empty-state">
-            <div style="font-size: 4rem; margin-bottom: var(--spacing-lg);"></div>
+            <div style="font-size: 4rem; margin-bottom: var(--spacing-lg);">🎯</div>
             <h2>Aucune séance enregistrée</h2>
             <p style="font-size: 1.1rem; margin: var(--spacing-lg) 0; color: var(--text-secondary);">
                 Commencez par créer votre première séance d'entraînement
             </p>
             <a href="/track" class="btn btn-primary btn-full" style="max-width: 300px; margin: 0 auto;">
-                 Créer ma première séance
+                🚀 Créer ma première séance
             </a>
         </div>
     </div>
     
     <div class="section">
-        <h3 style="text-align: center;"> Conseil</h3>
+        <h3 style="text-align: center;">💡 Conseil</h3>
         <div class="card" style="padding: var(--spacing-lg);">
             <p style="text-align: center; color: var(--text-secondary); line-height: 1.7;">
                 Une fois votre première séance enregistrée, vous pourrez la retrouver ici 
