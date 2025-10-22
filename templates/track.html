@@ -21,8 +21,13 @@
     <!-- Onglet Nouvelle Séance -->
     <div id="nouvelle-seance" class="tab-content active">
         <div class="card">
+            {% if session_template_name %}
+            <h2>📋 Nouvelle séance : {{ session_template_name }}</h2>
+            <p style="color: var(--accent-secondary);">✨ Les valeurs de votre dernière séance ont été pré-remplies</p>
+            {% else %}
             <h2>Créer une nouvelle séance</h2>
             <p>Ajoutez plusieurs exercices à votre séance d'entraînement.</p>
+            {% endif %}
             
             <form method="post" id="session-form">
                 <input type="hidden" name="action" value="create_session">
@@ -273,9 +278,34 @@ function setupAutocomplete(input) {
 document.addEventListener('DOMContentLoaded', function() {
     loadExistingExercises();
     
+    {% if session_template_name and template_exercises %}
+    // Pré-remplir le nom de la séance
+    document.getElementById('session_name').value = "{{ session_template_name }}";
+    
+    // Pré-remplir les exercices du template
+    const templateExercises = {{ template_exercises | tojson }};
+    
+    templateExercises.forEach((exercise, index) => {
+        addExercise();
+        
+        // Remplir les champs avec les données du template
+        setTimeout(() => {
+            const exerciseForm = document.querySelectorAll('.exercise-form')[index];
+            if (exerciseForm) {
+                const inputs = exerciseForm.querySelectorAll('input');
+                inputs[0].value = exercise[0]; // Nom de l'exercice
+                inputs[1].value = exercise[1]; // Séries
+                inputs[2].value = exercise[2]; // Répétitions
+                inputs[3].value = exercise[3]; // Poids
+            }
+        }, 100);
+    });
+    {% else %}
+    // Ajouter un exercice vide si pas de template
     if (document.getElementById('nouvelle-seance').classList.contains('active')) {
         addExercise();
     }
+    {% endif %}
 });
 </script>
 
