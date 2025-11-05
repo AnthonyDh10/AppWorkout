@@ -1,0 +1,447 @@
+{% extends "base.html" %}
+
+{% block title %}Programme - AI Fitness Coach{% endblock %}
+
+{% block content %}
+<div class="fade-in">
+    <h1>📅 Mon Programme d'Entraînement</h1>
+    
+    <!-- Programme Actif -->
+    {% if programme_actif %}
+    <div class="card programme-actif">
+        <div class="programme-header">
+            <div>
+                <h2>{{ programme_actif[1] }}</h2>
+                {% if programme_actif[2] %}
+                <p class="programme-description">{{ programme_actif[2] }}</p>
+                {% endif %}
+            </div>
+            <span class="badge-actif">✓ Actif</span>
+        </div>
+        
+        <!-- Barre de progression -->
+        <div class="progression-section">
+            <div class="progression-header">
+                <span class="progression-text">
+                    {{ progression.completees }} / {{ progression.total }} séances complétées
+                </span>
+                <span class="progression-pourcentage">{{ progression.pourcentage }}%</span>
+            </div>
+            <div class="progress-bar">
+                <div class="progress-fill" style="width: {{ progression.pourcentage }}%"></div>
+            </div>
+        </div>
+        
+        <!-- Liste des séances -->
+        <div class="seances-liste">
+            <h3>📋 Séances du programme</h3>
+            {% for seance in seances_programme %}
+            <div class="seance-item {% if seance[5] == 1 %}completed{% endif %}">
+                <div class="seance-info">
+                    <div class="seance-checkbox">
+                        <input type="checkbox" 
+                               {% if seance[5] == 1 %}checked{% endif %}
+                               onchange="toggleSeance({{ seance[0] }})"
+                               id="seance_{{ seance[0] }}">
+                        <label for="seance_{{ seance[0] }}"></label>
+                    </div>
+                    <div class="seance-details">
+                        <div class="seance-ordre">Séance {{ seance[2] }}</div>
+                        <div class="seance-nom">{{ seance[3] }}</div>
+                        {% if seance[4] %}
+                        <div class="seance-description">{{ seance[4] }}</div>
+                        {% endif %}
+                        {% if seance[5] == 1 and seance[6] %}
+                        <div class="seance-date-completion">
+                            ✓ Complétée le {{ seance[6]|format_date }}
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+                <div class="seance-actions">
+                    <a href="/start-session/{{ seance[3] }}" class="btn btn-small btn-primary">
+                        🏋️ Démarrer
+                    </a>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+        
+        <div class="programme-actions">
+            <a href="/programme/duplicate/{{ programme_actif[0] }}" class="btn btn-secondary">
+                📋 Dupliquer
+            </a>
+            <a href="/programme/archive/{{ programme_actif[0] }}" class="btn btn-secondary" 
+               onclick="return confirm('Voulez-vous archiver ce programme ?')">
+                📦 Archiver
+            </a>
+        </div>
+    </div>
+    {% else %}
+    <div class="card no-programme">
+        <h2>Aucun programme actif</h2>
+        <p>Créez un nouveau programme ou activez un programme existant pour commencer.</p>
+        <a href="/programme/create" class="btn btn-primary">➕ Créer un programme</a>
+    </div>
+    {% endif %}
+    
+    <!-- Tous les programmes -->
+    <div class="card">
+        <h2>📚 Tous mes programmes</h2>
+        
+        <div class="programmes-actions-top">
+            <a href="/programme/create" class="btn btn-primary">➕ Nouveau programme</a>
+            <a href="/ai" class="btn btn-secondary">🤖 Générer avec l'IA</a>
+        </div>
+        
+        {% if tous_programmes %}
+        <div class="programmes-grid">
+            {% for prog in tous_programmes %}
+            <div class="programme-card {% if prog[3] == 1 %}active{% endif %}">
+                <div class="programme-card-header">
+                    <h3>{{ prog[1] }}</h3>
+                    {% if prog[3] == 1 %}
+                    <span class="badge-actif">✓ Actif</span>
+                    {% endif %}
+                </div>
+                
+                {% if prog[2] %}
+                <p class="programme-card-description">{{ prog[2][:100] }}{% if prog[2]|length > 100 %}...{% endif %}</p>
+                {% endif %}
+                
+                <div class="programme-card-footer">
+                    <small>Créé le {{ prog[5]|format_date }}</small>
+                    <div class="programme-card-actions">
+                        {% if prog[3] == 0 %}
+                        <a href="/programme/activate/{{ prog[0] }}" class="btn btn-mini btn-primary" title="Activer">
+                            ⚡
+                        </a>
+                        {% endif %}
+                        <a href="/programme/duplicate/{{ prog[0] }}" class="btn btn-mini btn-secondary" title="Dupliquer">
+                            📋
+                        </a>
+                        <a href="/programme/archive/{{ prog[0] }}" class="btn btn-mini btn-secondary" 
+                           onclick="return confirm('Archiver ce programme ?')" title="Archiver">
+                            📦
+                        </a>
+                        <a href="/programme/delete/{{ prog[0] }}" class="btn btn-mini btn-danger" 
+                           onclick="return confirm('Supprimer définitivement ce programme ?')" title="Supprimer">
+                            🗑️
+                        </a>
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+        {% else %}
+        <p class="no-data">Aucun programme créé pour le moment.</p>
+        {% endif %}
+    </div>
+</div>
+
+<script>
+function toggleSeance(seanceId) {
+    window.location.href = '/programme/seance/toggle/' + seanceId;
+}
+</script>
+
+<style>
+.programme-actif {
+    background: linear-gradient(135deg, var(--accent), var(--accent-secondary));
+    color: var(--primary);
+    border: none;
+}
+
+.programme-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: start;
+    margin-bottom: 20px;
+    padding-bottom: 15px;
+    border-bottom: 2px solid rgba(13, 27, 42, 0.3);
+}
+
+.programme-header h2 {
+    margin: 0;
+    color: var(--primary);
+}
+
+.programme-description {
+    color: rgba(13, 27, 42, 0.8);
+    margin: 8px 0 0 0;
+}
+
+.badge-actif {
+    background: var(--success);
+    color: white;
+    padding: 6px 16px;
+    border-radius: 20px;
+    font-size: 14px;
+    font-weight: 600;
+}
+
+.progression-section {
+    background: rgba(13, 27, 42, 0.8);
+    padding: 20px;
+    border-radius: 12px;
+    margin-bottom: 25px;
+}
+
+.progression-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 10px;
+}
+
+.progression-text {
+    font-weight: 600;
+    color: var(--accent);
+}
+
+.progression-pourcentage {
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: var(--accent);
+}
+
+.progress-bar {
+    width: 100%;
+    height: 12px;
+    background: rgba(255, 255, 255, 0.2);
+    border-radius: 10px;
+    overflow: hidden;
+}
+
+.progress-fill {
+    height: 100%;
+    background: linear-gradient(90deg, var(--success), #2ecc71);
+    transition: width 0.5s ease;
+}
+
+.seances-liste {
+    margin: 25px 0;
+}
+
+.seances-liste h3 {
+    color: var(--primary);
+    margin-bottom: 15px;
+}
+
+.seance-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 15px;
+    background: rgba(13, 27, 42, 0.6);
+    border-radius: 10px;
+    margin-bottom: 10px;
+    transition: all 0.3s ease;
+}
+
+.seance-item:hover {
+    transform: translateX(5px);
+    background: rgba(13, 27, 42, 0.8);
+}
+
+.seance-item.completed {
+    opacity: 0.7;
+}
+
+.seance-item.completed .seance-nom {
+    text-decoration: line-through;
+}
+
+.seance-info {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+    flex: 1;
+}
+
+.seance-checkbox {
+    position: relative;
+}
+
+.seance-checkbox input[type="checkbox"] {
+    width: 24px;
+    height: 24px;
+    cursor: pointer;
+    accent-color: var(--success);
+}
+
+.seance-details {
+    flex: 1;
+}
+
+.seance-ordre {
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--accent);
+    text-transform: uppercase;
+}
+
+.seance-nom {
+    font-size: 16px;
+    font-weight: 600;
+    color: white;
+    margin: 4px 0;
+}
+
+.seance-description {
+    font-size: 14px;
+    color: rgba(255, 255, 255, 0.7);
+    margin-top: 4px;
+}
+
+.seance-date-completion {
+    font-size: 12px;
+    color: var(--success);
+    margin-top: 4px;
+}
+
+.seance-actions {
+    display: flex;
+    gap: 10px;
+}
+
+.programme-actions {
+    display: flex;
+    gap: 15px;
+    padding-top: 20px;
+    border-top: 2px solid rgba(13, 27, 42, 0.3);
+}
+
+.no-programme {
+    text-align: center;
+    padding: 60px 20px;
+}
+
+.no-programme h2 {
+    color: var(--text-primary);
+    margin-bottom: 15px;
+}
+
+.no-programme p {
+    color: var(--text-secondary);
+    margin-bottom: 25px;
+}
+
+.programmes-actions-top {
+    display: flex;
+    gap: 15px;
+    margin-bottom: 20px;
+}
+
+.programmes-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    gap: 20px;
+}
+
+.programme-card {
+    background: var(--secondary);
+    border: 2px solid var(--border-color);
+    border-radius: 12px;
+    padding: 20px;
+    transition: all 0.3s ease;
+}
+
+.programme-card:hover {
+    border-color: var(--accent);
+    transform: translateY(-3px);
+    box-shadow: 0 6px 20px rgba(244, 162, 97, 0.15);
+}
+
+.programme-card.active {
+    border-color: var(--success);
+    background: linear-gradient(135deg, rgba(244, 162, 97, 0.1), rgba(233, 196, 106, 0.1));
+}
+
+.programme-card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: start;
+    margin-bottom: 12px;
+}
+
+.programme-card-header h3 {
+    margin: 0;
+    color: var(--text-primary);
+    font-size: 1.1rem;
+}
+
+.programme-card-description {
+    color: var(--text-secondary);
+    font-size: 14px;
+    line-height: 1.4;
+    margin: 0 0 15px 0;
+}
+
+.programme-card-footer {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding-top: 15px;
+    border-top: 1px solid var(--border-color);
+}
+
+.programme-card-footer small {
+    color: var(--text-secondary);
+    font-size: 12px;
+}
+
+.programme-card-actions {
+    display: flex;
+    gap: 8px;
+}
+
+.btn-mini {
+    padding: 6px 10px;
+    font-size: 14px;
+    min-width: auto;
+}
+
+.btn-small {
+    padding: 8px 12px;
+    font-size: 14px;
+}
+
+.no-data {
+    text-align: center;
+    color: var(--text-secondary);
+    font-style: italic;
+    padding: 40px;
+}
+
+@media (max-width: 768px) {
+    .programme-header {
+        flex-direction: column;
+        gap: 10px;
+    }
+    
+    .seance-item {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 15px;
+    }
+    
+    .seance-actions {
+        width: 100%;
+        justify-content: flex-end;
+    }
+    
+    .programme-actions {
+        flex-direction: column;
+    }
+    
+    .programmes-grid {
+        grid-template-columns: 1fr;
+    }
+    
+    .programmes-actions-top {
+        flex-direction: column;
+    }
+}
+</style>
+{% endblock %}

@@ -54,9 +54,45 @@
 
     {% if training_program_html %}
     <div class="card fade-in" id="programResult">
-        <h2>📋 Votre Programme d'Entraînement</h2>
+        <div class="program-header">
+            <h2>📋 Votre Programme d'Entraînement</h2>
+            <button type="button" class="btn btn-secondary" onclick="openSaveModal()">
+                💾 Sauvegarder ce programme
+            </button>
+        </div>
         <div class="training-program-content">
             {{ training_program_html|safe }}
+        </div>
+    </div>
+    
+    <!-- Modal pour sauvegarder le programme -->
+    <div id="saveModal" class="modal" style="display: none;">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>💾 Sauvegarder le programme</h3>
+                <button type="button" class="close-btn" onclick="closeSaveModal()">×</button>
+            </div>
+            <form id="saveProgramForm">
+                <div class="form-group">
+                    <label for="program_name">Nom du programme * :</label>
+                    <input type="text" 
+                           id="program_name" 
+                           placeholder="Ex: Programme Force 12 semaines"
+                           required>
+                </div>
+                <div class="form-group">
+                    <label for="program_description">Description (optionnel) :</label>
+                    <textarea 
+                        id="program_description" 
+                        rows="3"
+                        placeholder="Objectifs, durée, niveau..."></textarea>
+                </div>
+                <div class="modal-actions">
+                    <button type="button" class="btn btn-secondary" onclick="closeSaveModal()">Annuler</button>
+                    <button type="submit" class="btn btn-primary">Sauvegarder</button>
+                </div>
+            </form>
+            <div id="saveMessage" style="display: none; margin-top: 15px;"></div>
         </div>
     </div>
     {% endif %}
@@ -121,14 +157,142 @@
         opacity: 0.6;
     }
 }
+
+.program-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+    flex-wrap: wrap;
+    gap: 15px;
+}
+
+.program-header h2 {
+    margin: 0;
+}
+
+/* Modal styles */
+.modal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.7);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 9999;
+    padding: 20px;
+}
+
+.modal-content {
+    background: var(--secondary);
+    border-radius: 15px;
+    padding: 30px;
+    max-width: 500px;
+    width: 100%;
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5);
+    animation: modalFadeIn 0.3s ease;
+}
+
+@keyframes modalFadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(-20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 25px;
+    padding-bottom: 15px;
+    border-bottom: 2px solid var(--border-color);
+}
+
+.modal-header h3 {
+    margin: 0;
+    color: var(--text-primary);
+}
+
+.close-btn {
+    background: none;
+    border: none;
+    font-size: 32px;
+    color: var(--text-secondary);
+    cursor: pointer;
+    line-height: 1;
+    padding: 0;
+    width: 32px;
+    height: 32px;
+    transition: all 0.2s ease;
+}
+
+.close-btn:hover {
+    color: var(--accent);
+    transform: rotate(90deg);
+}
+
+.modal-actions {
+    display: flex;
+    gap: 15px;
+    margin-top: 20px;
+}
+
+.modal-actions button {
+    flex: 1;
+}
+
+#saveMessage {
+    padding: 12px;
+    border-radius: 8px;
+    text-align: center;
+    font-weight: 500;
+}
+
+#saveMessage.success {
+    background: var(--success);
+    color: white;
+}
+
+#saveMessage.error {
+    background: var(--danger);
+    color: white;
+}
+
+@media (max-width: 768px) {
+    .program-header {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+    
+    .modal-content {
+        padding: 20px;
+    }
+}
 </style>
 
 <script>
+// Variables globales pour stocker le contenu du programme
+let programContent = '';
+
 document.addEventListener('DOMContentLoaded', function() {
     const form = document.getElementById('aiForm');
     const loadingIndicator = document.getElementById('loadingIndicator');
     const submitBtn = document.getElementById('submitBtn');
     const originalBtnText = submitBtn.innerHTML;
+    
+    // Stocker le contenu du programme si présent
+    const programResult = document.getElementById('programResult');
+    if (programResult) {
+        programContent = programResult.querySelector('.training-program-content').innerHTML;
+    }
 
     form.addEventListener('submit', function(e) {
         // Afficher l'indicateur de chargement
@@ -145,6 +309,56 @@ document.addEventListener('DOMContentLoaded', function() {
             loadingIndicator.scrollIntoView({ behavior: 'smooth', block: 'center' });
         }, 100);
     });
+});
+
+function openSaveModal() {
+    document.getElementById('saveModal').style.display = 'flex';
+}
+
+function closeSaveModal() {
+    document.getElementById('saveModal').style.display = 'none';
+    document.getElementById('saveMessage').style.display = 'none';
+}
+
+document.getElementById('saveProgramForm').addEventListener('submit', async function(e) {
+    e.preventDefault();
+    
+    const nom = document.getElementById('program_name').value.trim();
+    const description = document.getElementById('program_description').value.trim();
+    const messageDiv = document.getElementById('saveMessage');
+    
+    // Préparer les données
+    const formData = new FormData();
+    formData.append('nom', nom);
+    formData.append('description', description);
+    formData.append('programme_text', programContent);
+    
+    try {
+        const response = await fetch('/programme/save-from-ai', {
+            method: 'POST',
+            body: formData
+        });
+        
+        const result = await response.json();
+        
+        messageDiv.style.display = 'block';
+        if (result.success) {
+            messageDiv.className = 'success';
+            messageDiv.textContent = '✅ ' + result.message;
+            
+            // Rediriger après 2 secondes
+            setTimeout(() => {
+                window.location.href = '/programme';
+            }, 2000);
+        } else {
+            messageDiv.className = 'error';
+            messageDiv.textContent = '❌ ' + result.message;
+        }
+    } catch (error) {
+        messageDiv.style.display = 'block';
+        messageDiv.className = 'error';
+        messageDiv.textContent = '❌ Erreur lors de la sauvegarde: ' + error.message;
+    }
 });
 </script>
 {% endblock %}

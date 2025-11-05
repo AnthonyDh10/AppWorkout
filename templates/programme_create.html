@@ -1,0 +1,248 @@
+{% extends "base.html" %}
+
+{% block title %}Créer un Programme - AI Fitness Coach{% endblock %}
+
+{% block content %}
+<div class="fade-in">
+    <h1>➕ Créer un Nouveau Programme</h1>
+    
+    {% if message %}
+    <div class="alert alert-info">
+        {{ message }}
+    </div>
+    {% endif %}
+    
+    <div class="card">
+        <form method="post" id="programme-form">
+            <div class="form-group">
+                <label for="nom">📝 Nom du programme * :</label>
+                <input type="text" 
+                       id="nom" 
+                       name="nom" 
+                       placeholder="Ex: PPL 6 jours, Force 12 semaines..."
+                       required>
+            </div>
+            
+            <div class="form-group">
+                <label for="description">📄 Description (optionnel) :</label>
+                <textarea 
+                    id="description" 
+                    name="description" 
+                    rows="3"
+                    placeholder="Objectifs, durée, niveau requis..."></textarea>
+            </div>
+            
+            <input type="hidden" name="seances_data" id="seances_data">
+            
+            <div class="seances-section">
+                <h3>📋 Séances du programme</h3>
+                <p class="hint">Ajoutez les séances dans l'ordre d'exécution.</p>
+                
+                <div id="seances-container"></div>
+                
+                <button type="button" class="btn btn-secondary" onclick="addSeance()">
+                    ➕ Ajouter une séance
+                </button>
+            </div>
+            
+            <div class="form-actions">
+                <a href="/programme" class="btn btn-secondary">Annuler</a>
+                <button type="submit" class="btn btn-primary" id="submit-btn" style="display: none;">
+                    ✅ Créer le programme
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+let seanceCount = 0;
+
+function addSeance() {
+    const container = document.getElementById('seances-container');
+    const seanceDiv = document.createElement('div');
+    seanceDiv.className = 'seance-form';
+    seanceDiv.dataset.ordre = seanceCount + 1;
+    
+    seanceDiv.innerHTML = `
+        <div class="seance-header">
+            <h4>Séance ${seanceCount + 1}</h4>
+            <button type="button" class="btn btn-danger btn-mini" onclick="removeSeance(this)">🗑️</button>
+        </div>
+        <div class="form-row">
+            <div class="form-group">
+                <label>Nom de la séance * :</label>
+                <input type="text" 
+                       class="seance-nom"
+                       placeholder="Ex: Push (Pectoraux/Épaules/Triceps)" 
+                       required>
+            </div>
+        </div>
+        <div class="form-group">
+            <label>Description (optionnel) :</label>
+            <textarea 
+                class="seance-description"
+                rows="2"
+                placeholder="Liste des exercices, volume, intensité..."></textarea>
+        </div>
+    `;
+    
+    container.appendChild(seanceDiv);
+    seanceCount++;
+    
+    document.getElementById('submit-btn').style.display = 'block';
+}
+
+function removeSeance(button) {
+    button.closest('.seance-form').remove();
+    
+    const seances = document.querySelectorAll('.seance-form');
+    if (seances.length === 0) {
+        document.getElementById('submit-btn').style.display = 'none';
+    }
+    
+    // Renuméroter les séances
+    seances.forEach((seance, index) => {
+        seance.querySelector('h4').textContent = `Séance ${index + 1}`;
+        seance.dataset.ordre = index + 1;
+    });
+    
+    seanceCount = seances.length;
+}
+
+// Soumettre le formulaire
+document.getElementById('programme-form').addEventListener('submit', function(e) {
+    e.preventDefault();
+    
+    const seancesData = [];
+    const seanceForms = document.querySelectorAll('.seance-form');
+    
+    seanceForms.forEach((seanceForm) => {
+        const nom = seanceForm.querySelector('.seance-nom').value.trim();
+        const description = seanceForm.querySelector('.seance-description').value.trim();
+        const ordre = parseInt(seanceForm.dataset.ordre);
+        
+        if (nom) {
+            seancesData.push({
+                ordre: ordre,
+                nom: nom,
+                description: description
+            });
+        }
+    });
+    
+    if (seancesData.length === 0) {
+        alert('⚠️ Ajoutez au moins une séance au programme.');
+        return;
+    }
+    
+    document.getElementById('seances_data').value = JSON.stringify(seancesData);
+    this.submit();
+});
+
+// Ajouter une première séance au chargement
+document.addEventListener('DOMContentLoaded', function() {
+    addSeance();
+});
+</script>
+
+<style>
+.form-group {
+    margin-bottom: 20px;
+}
+
+.form-group label {
+    display: block;
+    margin-bottom: 8px;
+    font-weight: 600;
+    color: var(--text-primary);
+}
+
+.form-group input[type="text"],
+.form-group textarea {
+    width: 100%;
+    padding: 12px;
+    border: 2px solid var(--border-color);
+    border-radius: 8px;
+    background: var(--secondary);
+    color: var(--text-primary);
+    font-size: 16px;
+}
+
+.form-group input:focus,
+.form-group textarea:focus {
+    outline: none;
+    border-color: var(--accent);
+}
+
+.hint {
+    color: var(--text-secondary);
+    font-size: 14px;
+    margin-bottom: 15px;
+}
+
+.seances-section {
+    margin: 30px 0;
+}
+
+.seances-section h3 {
+    color: var(--text-primary);
+    margin-bottom: 10px;
+}
+
+#seances-container {
+    margin-bottom: 20px;
+}
+
+.seance-form {
+    border: 2px solid var(--border-color);
+    border-radius: 12px;
+    padding: 20px;
+    margin-bottom: 15px;
+    background: var(--hover-bg);
+}
+
+.seance-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 15px;
+}
+
+.seance-header h4 {
+    margin: 0;
+    color: var(--accent);
+}
+
+.form-row {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 15px;
+}
+
+.form-actions {
+    display: flex;
+    gap: 15px;
+    padding-top: 20px;
+    border-top: 1px solid var(--border-color);
+}
+
+.alert {
+    padding: 15px;
+    border-radius: 8px;
+    margin-bottom: 20px;
+}
+
+.alert-info {
+    background-color: #d1ecf1;
+    color: #0c5460;
+    border: 1px solid #bee5eb;
+}
+
+@media (max-width: 768px) {
+    .form-actions {
+        flex-direction: column;
+    }
+}
+</style>
+{% endblock %}

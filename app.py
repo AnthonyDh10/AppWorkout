@@ -1,5 +1,5 @@
 import os
-from flask import Flask, render_template, request, jsonify
+from flask import Flask, render_template, request, jsonify, redirect
 import google.generativeai as genai
 from dotenv import load_dotenv
 import sqlite3
@@ -94,6 +94,32 @@ def init_db():
                     reps INTEGER NOT NULL,
                     weight REAL NOT NULL,
                     FOREIGN KEY (exercise_id) REFERENCES exercises (id) ON DELETE CASCADE
+                )
+            ''')
+            
+            # Table pour les programmes d'entraînement
+            conn.execute('''
+                CREATE TABLE IF NOT EXISTS programmes (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    nom TEXT NOT NULL,
+                    description TEXT,
+                    actif INTEGER DEFAULT 0,
+                    archive INTEGER DEFAULT 0,
+                    date_creation TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                )
+            ''')
+            
+            # Table pour les séances d'un programme
+            conn.execute('''
+                CREATE TABLE IF NOT EXISTS programme_seances (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    programme_id INTEGER NOT NULL,
+                    ordre INTEGER NOT NULL,
+                    nom_seance TEXT NOT NULL,
+                    description TEXT,
+                    completee INTEGER DEFAULT 0,
+                    date_completion TIMESTAMP,
+                    FOREIGN KEY (programme_id) REFERENCES programmes (id) ON DELETE CASCADE
                 )
             ''')
             
@@ -720,6 +746,261 @@ def get_exercises():
     # Convertir en liste triée, filtrer les valeurs vides
     exercises_list = sorted([ex for ex in exercises if ex and ex.strip()])
     return jsonify(exercises_list)
+
+# ============================================
+# ROUTES PROGRAMMES
+# ============================================
+
+@app.route('/programme')
+def programme():
+    """Afficher le programme actif et la liste des programmes"""
+    programme_actif = None
+    seances_programme = []
+    tous_programmes = []
+    progression = {'completees': 0, 'total': 0, 'pourcentage': 0}
+    
+    try:
+        with sqlite3.connect('database.db') as conn:
+            cur = conn.cursor()
+            
+            # Récupérer le programme actif
+            cur.execute("SELECT * FROM programmes WHERE actif = 1 AND archive = 0 LIMIT 1")
+            programme_actif = cur.fetchone()
+            
+            if programme_actif:
+                programme_id = programme_actif[0]
+                
+                # Récupérer les séances du programme actif
+                cur.execute("""
+                    SELECT * FROM programme_seances 
+                    WHERE programme_id = ? 
+                    ORDER BY ordre
+                """, (programme_id,))
+                seances_programme = cur.fetchall()
+                
+                # Calculer la progression
+                if seances_programme:
+                    progression['total'] = len(seances_programme)
+                    progression['completees'] = sum(1 for s in seances_programme if s[5] == 1)
+                    progression['pourcentage'] = int((progression['completees'] / progression['total']) * 100)
+            
+            # Récupérer tous les programmes non archivés
+            cur.execute("SELECT * FROM programmes WHERE archive = 0 ORDER BY actif DESC, date_creation DESC")
+            tous_programmes = cur.fetchall()
+            
+    except sqlite3.Error as e:
+        print(f"❌ Erreur lors de la récupération des programmes: {e}")
+    
+    return render_template('programme.html', 
+                         programme_actif=programme_actif,
+                         seances_programme=seances_programme,
+                         tous_programmes=tous_programmes,
+                         progression=progression)
+
+@app.route('/programme/create', methods=['GET', 'POST'])
+def programme_create():
+    """Créer un nouveau programme"""
+    message = None
+    
+    if request.method == 'POST':
+        try:
+            nom = request.form.get('nom', '').strip()
+            description = request.form.get('description', '').strip()
+            seances_json = request.form.get('seances_data')
+            
+            if not nom:
+                message = "⚠️ Le nom du programme est obligatoire."
+            elif not seances_json:
+                message = "⚠️ Ajoutez au moins une séance au programme."
+            else:
+                seances = json.loads(seances_json)
+                
+                if seances:
+                    with sqlite3.connect('database.db') as conn:
+                        cur = conn.cursor()
+                        
+                        # Créer le programme
+                        cur.execute("INSERT INTO programmes (nom, description) VALUES (?, ?)", (nom, description))
+                        programme_id = cur.lastrowid
+                        
+                        # Ajouter les séances
+                        for seance in seances:
+                            cur.execute("""
+                                INSERT INTO programme_seances (programme_id, ordre, nom_seance, description)
+                                VALUES (?, ?, ?, ?)
+                            """, (programme_id, seance['ordre'], seance['nom'], seance.get('description', '')))
+                        
+                        conn.commit()
+                        message = f"✅ Programme '{nom}' créé avec {len(seances)} séance(s)!"
+                        
+                        # Rediriger vers la page des programmes
+                        return redirect('/programme')
+                else:
+                    message = "⚠️ Ajoutez au moins une séance au programme."
+                    
+        except json.JSONDecodeError as e:
+            message = f"❌ Erreur de format des données: {e}"
+        except sqlite3.Error as e:
+            message = f"❌ Erreur de base de données: {e}"
+        except Exception as e:
+            message = f"❌ Erreur inattendue: {e}"
+    
+    return render_template('programme_create.html', message=message)
+
+@app.route('/programme/activate/<int:programme_id>')
+def programme_activate(programme_id):
+    """Activer un programme (désactive les autres)"""
+    try:
+        with sqlite3.connect('database.db') as conn:
+            # Désactiver tous les programmes
+            conn.execute("UPDATE programmes SET actif = 0")
+            # Activer le programme sélectionné
+            conn.execute("UPDATE programmes SET actif = 1 WHERE id = ?", (programme_id,))
+            conn.commit()
+    except sqlite3.Error as e:
+        print(f"❌ Erreur lors de l'activation du programme: {e}")
+    
+    return redirect('/programme')
+
+@app.route('/programme/duplicate/<int:programme_id>')
+def programme_duplicate(programme_id):
+    """Dupliquer un programme"""
+    try:
+        with sqlite3.connect('database.db') as conn:
+            cur = conn.cursor()
+            
+            # Récupérer le programme original
+            cur.execute("SELECT nom, description FROM programmes WHERE id = ?", (programme_id,))
+            programme = cur.fetchone()
+            
+            if programme:
+                # Créer la copie
+                nouveau_nom = f"{programme[0]} (Copie)"
+                cur.execute("INSERT INTO programmes (nom, description) VALUES (?, ?)", 
+                          (nouveau_nom, programme[1]))
+                nouveau_programme_id = cur.lastrowid
+                
+                # Copier les séances
+                cur.execute("""
+                    SELECT ordre, nom_seance, description 
+                    FROM programme_seances 
+                    WHERE programme_id = ? 
+                    ORDER BY ordre
+                """, (programme_id,))
+                seances = cur.fetchall()
+                
+                for seance in seances:
+                    cur.execute("""
+                        INSERT INTO programme_seances (programme_id, ordre, nom_seance, description)
+                        VALUES (?, ?, ?, ?)
+                    """, (nouveau_programme_id, seance[0], seance[1], seance[2]))
+                
+                conn.commit()
+    except sqlite3.Error as e:
+        print(f"❌ Erreur lors de la duplication du programme: {e}")
+    
+    return redirect('/programme')
+
+@app.route('/programme/archive/<int:programme_id>')
+def programme_archive(programme_id):
+    """Archiver un programme"""
+    try:
+        with sqlite3.connect('database.db') as conn:
+            conn.execute("UPDATE programmes SET archive = 1, actif = 0 WHERE id = ?", (programme_id,))
+            conn.commit()
+    except sqlite3.Error as e:
+        print(f"❌ Erreur lors de l'archivage du programme: {e}")
+    
+    return redirect('/programme')
+
+@app.route('/programme/delete/<int:programme_id>')
+def programme_delete(programme_id):
+    """Supprimer un programme"""
+    try:
+        with sqlite3.connect('database.db') as conn:
+            conn.execute("DELETE FROM programmes WHERE id = ?", (programme_id,))
+            conn.commit()
+    except sqlite3.Error as e:
+        print(f"❌ Erreur lors de la suppression du programme: {e}")
+    
+    return redirect('/programme')
+
+@app.route('/programme/seance/toggle/<int:seance_id>')
+def programme_seance_toggle(seance_id):
+    """Marquer une séance comme complétée/non complétée"""
+    try:
+        with sqlite3.connect('database.db') as conn:
+            cur = conn.cursor()
+            
+            # Récupérer l'état actuel
+            cur.execute("SELECT completee FROM programme_seances WHERE id = ?", (seance_id,))
+            result = cur.fetchone()
+            
+            if result:
+                nouvelle_valeur = 0 if result[0] == 1 else 1
+                date_completion = datetime.now() if nouvelle_valeur == 1 else None
+                
+                cur.execute("""
+                    UPDATE programme_seances 
+                    SET completee = ?, date_completion = ? 
+                    WHERE id = ?
+                """, (nouvelle_valeur, date_completion, seance_id))
+                conn.commit()
+    except sqlite3.Error as e:
+        print(f"❌ Erreur lors de la mise à jour de la séance: {e}")
+    
+    return redirect('/programme')
+
+@app.route('/programme/save-from-ai', methods=['POST'])
+def programme_save_from_ai():
+    """Sauvegarder un programme généré par l'IA"""
+    try:
+        nom = request.form.get('nom', '').strip()
+        description = request.form.get('description', '').strip()
+        programme_text = request.form.get('programme_text', '').strip()
+        
+        if not nom or not programme_text:
+            return jsonify({'success': False, 'message': 'Données manquantes'})
+        
+        # Parser le texte du programme (simple parsing ligne par ligne)
+        # Format attendu: chaque ligne avec un exercice = une séance
+        lignes = [l.strip() for l in programme_text.split('\n') if l.strip()]
+        seances = []
+        ordre = 1
+        
+        for ligne in lignes:
+            # Filtrer les lignes qui ressemblent à des titres de séance
+            if any(mot in ligne.lower() for mot in ['séance', 'jour', 'session', 'workout']):
+                seances.append({
+                    'ordre': ordre,
+                    'nom': ligne[:200],  # Limiter la longueur
+                    'description': ''
+                })
+                ordre += 1
+        
+        if seances:
+            with sqlite3.connect('database.db') as conn:
+                cur = conn.cursor()
+                
+                # Créer le programme
+                cur.execute("INSERT INTO programmes (nom, description) VALUES (?, ?)", (nom, description))
+                programme_id = cur.lastrowid
+                
+                # Ajouter les séances
+                for seance in seances:
+                    cur.execute("""
+                        INSERT INTO programme_seances (programme_id, ordre, nom_seance, description)
+                        VALUES (?, ?, ?, ?)
+                    """, (programme_id, seance['ordre'], seance['nom'], seance['description']))
+                
+                conn.commit()
+                return jsonify({'success': True, 'message': f'Programme sauvegardé avec {len(seances)} séances!'})
+        else:
+            return jsonify({'success': False, 'message': 'Aucune séance détectée dans le programme'})
+            
+    except Exception as e:
+        print(f"❌ Erreur: {e}")
+        return jsonify({'success': False, 'message': str(e)})
 
 @app.route('/manifest.json')
 def manifest():
