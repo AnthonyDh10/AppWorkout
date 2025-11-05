@@ -8,14 +8,28 @@
     
     <div class="card">
         <h2>Créez votre programme personnalisé</h2>
-        <p>Décrivez vos objectifs fitness et obtenez un programme d'entraînement sur mesure généré par IA.</p>
-        
+        <div class="card" style="padding: var(--spacing-md);">
+            <ul style="list-style: none; padding: 0;">
+                <li style="margin-bottom: var(--spacing-sm); color: var(--text-secondary);">
+                    <span style="color: var(--accent);">•</span> Soyez précis dans vos objectifs
+                </li>
+                <li style="margin-bottom: var(--spacing-sm); color: var(--text-secondary);">
+                    <span style="color: var(--accent);">•</span> Mentionnez votre niveau (débutant, intermédiaire, avancé)
+                </li>
+                <li style="margin-bottom: var(--spacing-sm); color: var(--text-secondary);">
+                    <span style="color: var(--accent);">•</span> Indiquez vos contraintes (temps, matériel disponible)
+                </li>
+                <li style="margin-bottom: 0; color: var(--text-secondary);">
+                    <span style="color: var(--accent);">•</span> N'hésitez pas à demander des variantes ou alternatives
+                </li>
+            </ul>
+        </div>        
         <form method="post">
-            <label for="prompt">Décrivez vos objectifs fitness :</label>
+            <label for="prompt">Décrivez vos objectifs :</label>
             <textarea 
                 id="prompt" 
                 name="prompt" 
-                placeholder="Ex: Je veux perdre du poids, gagner en muscle, améliorer mon endurance..."
+                placeholder="Ex: Hypertrophie, 4 séances par semaine, Full body, nouveau cycle"
                 required
             ></textarea>
             <button type="submit" class="btn btn-primary btn-full">
@@ -33,24 +47,5 @@
     </div>
     {% endif %}
     
-    <div class="section">
-        <h3>💡 Comment utiliser le Coach IA</h3>
-        <div class="card" style="padding: var(--spacing-md);">
-            <ul style="list-style: none; padding: 0;">
-                <li style="margin-bottom: var(--spacing-sm); color: var(--text-secondary);">
-                    <span style="color: var(--accent);">•</span> Soyez précis dans vos objectifs
-                </li>
-                <li style="margin-bottom: var(--spacing-sm); color: var(--text-secondary);">
-                    <span style="color: var(--accent);">•</span> Mentionnez votre niveau (débutant, intermédiaire, avancé)
-                </li>
-                <li style="margin-bottom: var(--spacing-sm); color: var(--text-secondary);">
-                    <span style="color: var(--accent);">•</span> Indiquez vos contraintes (temps, matériel disponible)
-                </li>
-                <li style="margin-bottom: 0; color: var(--text-secondary);">
-                    <span style="color: var(--accent);">•</span> N'hésitez pas à demander des variantes ou alternatives
-                </li>
-            </ul>
-        </div>
-    </div>
 </div>
 {% endblock %}

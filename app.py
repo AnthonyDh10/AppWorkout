@@ -291,11 +291,10 @@ Deload (Décharge) : Après chaque mésocycle (après la semaine 4 ou 6), tu doi
 
 Demande de l'utilisateur
 L'utilisateur doit OBLIGATOIREMENT fournir les informations suivantes :
+
 Objectif principal (Hypertrophie, Force, Endurance).
 
 Nombre de séances par semaine (Fréquence).
-
-Niveau de pratique (Débutant, Intermédiaire, Avancé).
 
 Groupes musculaires à travailler OU le type de "split" souhaité.
 
