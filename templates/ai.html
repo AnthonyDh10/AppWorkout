@@ -80,13 +80,6 @@
                            placeholder="Ex: Programme Force 12 semaines"
                            required>
                 </div>
-                <div class="form-group">
-                    <label for="program_description">Description (optionnel) :</label>
-                    <textarea 
-                        id="program_description" 
-                        rows="3"
-                        placeholder="Objectifs, durée, niveau..."></textarea>
-                </div>
                 <div class="modal-actions">
                     <button type="button" class="btn btn-secondary" onclick="closeSaveModal()">Annuler</button>
                     <button type="submit" class="btn btn-primary">Sauvegarder</button>
@@ -324,13 +317,11 @@ document.getElementById('saveProgramForm').addEventListener('submit', async func
     e.preventDefault();
     
     const nom = document.getElementById('program_name').value.trim();
-    const description = document.getElementById('program_description').value.trim();
     const messageDiv = document.getElementById('saveMessage');
     
     // Préparer les données
     const formData = new FormData();
     formData.append('nom', nom);
-    formData.append('description', description);
     formData.append('programme_text', programContent);
     
     try {

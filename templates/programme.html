@@ -12,9 +12,6 @@
         <div class="programme-header">
             <div>
                 <h2>{{ programme_actif[1] }}</h2>
-                {% if programme_actif[2] %}
-                <p class="programme-description">{{ programme_actif[2] }}</p>
-                {% endif %}
             </div>
             <span class="badge-actif">✓ Actif</span>
         </div>
@@ -48,9 +45,6 @@
                     <div class="seance-details">
                         <div class="seance-ordre">Séance {{ seance[2] }}</div>
                         <div class="seance-nom">{{ seance[3]|striptags }}</div>
-                        {% if seance[4] %}
-                        <div class="seance-description">{{ seance[4]|striptags }}</div>
-                        {% endif %}
                         {% if seance[5] == 1 and seance[6] %}
                         <div class="seance-date-completion">
                             ✓ Complétée le {{ seance[6]|format_date }}
@@ -104,10 +98,6 @@
                     <span class="badge-actif">✓ Actif</span>
                     {% endif %}
                 </div>
-                
-                {% if prog[2] %}
-                <p class="programme-card-description">{{ prog[2][:100] }}{% if prog[2]|length > 100 %}...{% endif %}</p>
-                {% endif %}
                 
                 <div class="programme-card-footer">
                     <small>Créé le {{ prog[5]|format_date }}</small>

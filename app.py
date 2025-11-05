@@ -805,7 +805,6 @@ def programme_create():
     if request.method == 'POST':
         try:
             nom = request.form.get('nom', '').strip()
-            description = request.form.get('description', '').strip()
             seances_json = request.form.get('seances_data')
             
             if not nom:
@@ -820,15 +819,15 @@ def programme_create():
                         cur = conn.cursor()
                         
                         # Créer le programme
-                        cur.execute("INSERT INTO programmes (nom, description) VALUES (?, ?)", (nom, description))
+                        cur.execute("INSERT INTO programmes (nom) VALUES (?)", (nom,))
                         programme_id = cur.lastrowid
                         
                         # Ajouter les séances
                         for seance in seances:
                             cur.execute("""
-                                INSERT INTO programme_seances (programme_id, ordre, nom_seance, description)
-                                VALUES (?, ?, ?, ?)
-                            """, (programme_id, seance['ordre'], seance['nom'], seance.get('description', '')))
+                                INSERT INTO programme_seances (programme_id, ordre, nom_seance)
+                                VALUES (?, ?, ?)
+                            """, (programme_id, seance['ordre'], seance['nom']))
                         
                         conn.commit()
                         message = f"✅ Programme '{nom}' créé avec {len(seances)} séance(s)!"
@@ -870,19 +869,18 @@ def programme_duplicate(programme_id):
             cur = conn.cursor()
             
             # Récupérer le programme original
-            cur.execute("SELECT nom, description FROM programmes WHERE id = ?", (programme_id,))
+            cur.execute("SELECT nom FROM programmes WHERE id = ?", (programme_id,))
             programme = cur.fetchone()
             
             if programme:
                 # Créer la copie
                 nouveau_nom = f"{programme[0]} (Copie)"
-                cur.execute("INSERT INTO programmes (nom, description) VALUES (?, ?)", 
-                          (nouveau_nom, programme[1]))
+                cur.execute("INSERT INTO programmes (nom) VALUES (?)", (nouveau_nom,))
                 nouveau_programme_id = cur.lastrowid
                 
                 # Copier les séances
                 cur.execute("""
-                    SELECT ordre, nom_seance, description 
+                    SELECT ordre, nom_seance 
                     FROM programme_seances 
                     WHERE programme_id = ? 
                     ORDER BY ordre
@@ -891,9 +889,9 @@ def programme_duplicate(programme_id):
                 
                 for seance in seances:
                     cur.execute("""
-                        INSERT INTO programme_seances (programme_id, ordre, nom_seance, description)
-                        VALUES (?, ?, ?, ?)
-                    """, (nouveau_programme_id, seance[0], seance[1], seance[2]))
+                        INSERT INTO programme_seances (programme_id, ordre, nom_seance)
+                        VALUES (?, ?, ?)
+                    """, (nouveau_programme_id, seance[0], seance[1]))
                 
                 conn.commit()
     except sqlite3.Error as e:
@@ -959,7 +957,7 @@ def programme_start_seance(seance_id):
             cur = conn.cursor()
             
             # Récupérer les infos de la séance du programme
-            cur.execute("SELECT nom_seance, description FROM programme_seances WHERE id = ?", (seance_id,))
+            cur.execute("SELECT nom_seance FROM programme_seances WHERE id = ?", (seance_id,))
             seance = cur.fetchone()
             
             if seance:
@@ -985,7 +983,6 @@ def programme_save_from_ai():
         import re
         
         nom = request.form.get('nom', '').strip()
-        description = request.form.get('description', '').strip()
         programme_text = request.form.get('programme_text', '').strip()
         
         if not nom or not programme_text:
@@ -1007,8 +1004,7 @@ def programme_save_from_ai():
                 if ligne_clean and len(ligne_clean) > 3:  # Éviter les lignes trop courtes
                     seances.append({
                         'ordre': ordre,
-                        'nom': ligne_clean[:200],  # Limiter la longueur
-                        'description': ''
+                        'nom': ligne_clean[:200]  # Limiter la longueur
                     })
                     ordre += 1
         
@@ -1017,15 +1013,15 @@ def programme_save_from_ai():
                 cur = conn.cursor()
                 
                 # Créer le programme
-                cur.execute("INSERT INTO programmes (nom, description) VALUES (?, ?)", (nom, description))
+                cur.execute("INSERT INTO programmes (nom) VALUES (?)", (nom,))
                 programme_id = cur.lastrowid
                 
                 # Ajouter les séances
                 for seance in seances:
                     cur.execute("""
-                        INSERT INTO programme_seances (programme_id, ordre, nom_seance, description)
-                        VALUES (?, ?, ?, ?)
-                    """, (programme_id, seance['ordre'], seance['nom'], seance['description']))
+                        INSERT INTO programme_seances (programme_id, ordre, nom_seance)
+                        VALUES (?, ?, ?)
+                    """, (programme_id, seance['ordre'], seance['nom']))
                 
                 conn.commit()
                 return jsonify({'success': True, 'message': f'Programme sauvegardé avec {len(seances)} séances!'})
