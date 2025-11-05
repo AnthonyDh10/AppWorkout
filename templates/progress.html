@@ -35,7 +35,7 @@
             <div class="exercise-performance-card">
                 <div class="exercise-header">
                     <h3>🏋️ {{ exercise_name }}</h3>
-                    <span class="sessions-count">{{ stats.total_sessions }} séance(s)</span>
+                    <span class="sessions-count">{{ stats.total_sets }} série(s)</span>
                 </div>
                 
                 <div class="performance-grid">
@@ -50,6 +50,9 @@
                             {% endif %}
                         </div>
                         <div class="performance-value">{{ "%.1f"|format(stats.max_1rm) }} kg</div>
+                        <div class="performance-subtitle">
+                            Basé sur {{ stats.best_1rm_reps }} rép @ {{ stats.best_1rm_weight }} kg
+                        </div>
                     </div>
                     
                     <!-- Poids max -->
@@ -58,56 +61,27 @@
                         <div class="performance-value">{{ stats.max_weight }} kg</div>
                     </div>
                     
-                    <!-- Meilleur volume -->
+                    <!-- Volume et séries -->
                     <div class="performance-item">
-                        <div class="performance-label">💪 Meilleur volume</div>
+                        <div class="performance-label">💪 Meilleur volume (1 série)</div>
                         <div class="performance-value">
-                            {{ stats.best_volume_sets }}×{{ stats.best_volume_reps }} à {{ stats.best_volume_weight }}kg
+                            {{ stats.best_volume_reps }} rép × {{ stats.best_volume_weight }} kg
                         </div>
                         <div class="performance-subtitle">
-                            Volume total: {{ "%.0f"|format(stats.best_volume_total) }} kg
+                            Volume: {{ "%.0f"|format(stats.best_volume_total) }} kg
                         </div>
+                    </div>
+                    
+                    <!-- Total séries -->
+                    <div class="performance-item">
+                        <div class="performance-label">📊 Total séries</div>
+                        <div class="performance-value">{{ stats.total_sets }}</div>
                     </div>
                 </div>
             </div>
             {% endfor %}
         </div>
     </div>
-    
-    {% if entries %}
-    <!-- Historique détaillé -->
-    <div class="card">
-        <h2>📋 Historique détaillé</h2>
-        <p>Toutes vos performances enregistrées chronologiquement.</p>
-        
-        <div class="table-container">
-            <table class="performance-table">
-                <thead>
-                    <tr>
-                        <th>📅 Date</th>
-                        <th>🏋️ Exercice</th>
-                        <th>🔢 Séries</th>
-                        <th>🔁 Reps</th>
-                        <th>⚖️ Poids</th>
-                        <th>💪 Volume</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {% for entry in entries %}
-                    <tr>
-                        <td>{{ entry[5]|format_date }}</td>
-                        <td><strong>{{ entry[1] }}</strong></td>
-                        <td>{{ entry[2] }}</td>
-                        <td>{{ entry[3] }}</td>
-                        <td>{{ entry[4] }} kg</td>
-                        <td>{{ entry[2] * entry[3] * entry[4] }} kg</td>
-                    </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
-        </div>
-    </div>
-    {% endif %}
     
     {% else %}
     <div class="card text-center">

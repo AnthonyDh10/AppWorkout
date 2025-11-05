@@ -31,7 +31,7 @@
             
             <form method="post" action="/track" id="session-form">
                 <input type="hidden" name="action" value="create_session">
-                <input type="hidden" name="exercise_count" id="exercise_count" value="0">
+                <input type="hidden" name="exercises_data" id="exercises_data">
                 
                 <label for="session_name">📋 Nom de la séance :</label>
                 <input 
@@ -84,6 +84,7 @@
 
 <script>
 let exerciseCount = 0;
+let exercisesData = [];
 
 function showTab(tabName) {
     // Masquer tous les contenus d'onglets
@@ -103,22 +104,23 @@ function showTab(tabName) {
     event.target.classList.add('active');
 }
 
-function addExercise() {
+function addExercise(templateData = null) {
     const container = document.getElementById('exercises-container');
     const exerciseDiv = document.createElement('div');
     exerciseDiv.className = 'exercise-form';
+    exerciseDiv.dataset.exerciseId = exerciseCount;
+    
     exerciseDiv.innerHTML = `
         <div class="exercise-header">
             <h3>🏋️ Exercice ${exerciseCount + 1}</h3>
             <button type="button" class="btn btn-danger btn-small" onclick="removeExercise(this)">❌</button>
         </div>
-          <div class="form-row">
+        <div class="form-row">
             <div class="form-group">
                 <label>Nom de l'exercice :</label>
                 <div class="autocomplete-container">
                     <input type="text" 
-                           name="exercise_name_${exerciseCount}" 
-                           class="exercise-input"
+                           class="exercise-name-input"
                            placeholder="Ex: Développé couché" 
                            autocomplete="off"
                            required>
@@ -127,31 +129,79 @@ function addExercise() {
             </div>
         </div>
         
-        <div class="form-row">
-            <div class="form-group">
-                <label>Séries :</label>
-                <input type="number" name="sets_${exerciseCount}" min="1" max="20" placeholder="3" required>
-            </div>
-            <div class="form-group">
-                <label>Répétitions :</label>
-                <input type="number" name="reps_${exerciseCount}" min="1" max="100" placeholder="12" required>
-            </div>
-            <div class="form-group">
-                <label>Poids (kg) :</label>
-                <input type="number" name="weight_${exerciseCount}" step="0.5" min="0" placeholder="50.0" required>
-            </div>
+        <div class="sets-section">
+            <h4>📊 Séries</h4>
+            <div class="sets-container"></div>
+            <button type="button" class="btn btn-secondary btn-small" onclick="addSet(${exerciseCount})">
+                ➕ Ajouter une série
+            </button>
         </div>
     `;
-      container.appendChild(exerciseDiv);
-    exerciseCount++;
     
-    // Configurer l'autocomplétion pour le nouvel input
-    const newInput = exerciseDiv.querySelector('.exercise-input');
+    container.appendChild(exerciseDiv);
+    
+    // Configurer l'autocomplétion
+    const newInput = exerciseDiv.querySelector('.exercise-name-input');
     setupAutocomplete(newInput);
     
-    // Mettre à jour le compteur et afficher le bouton de validation
-    document.getElementById('exercise_count').value = exerciseCount;
+    // Si on a des données de template, les charger
+    if (templateData) {
+        newInput.value = templateData.name;
+        if (templateData.sets && templateData.sets.length > 0) {
+            templateData.sets.forEach((setData) => {
+                addSet(exerciseCount, setData);
+            });
+        } else {
+            addSet(exerciseCount);
+        }
+    } else {
+        // Ajouter une première série vide
+        addSet(exerciseCount);
+    }
+    
+    exerciseCount++;
     document.getElementById('validate-session').style.display = 'block';
+}
+
+function addSet(exerciseId, setData = null) {
+    const exerciseDiv = document.querySelector(`[data-exercise-id="${exerciseId}"]`);
+    if (!exerciseDiv) return;
+    
+    const setsContainer = exerciseDiv.querySelector('.sets-container');
+    const setNumber = setsContainer.children.length + 1;
+    
+    const setDiv = document.createElement('div');
+    setDiv.className = 'set-row';
+    setDiv.innerHTML = `
+        <span class="set-number">Série ${setNumber}</span>
+        <div class="set-inputs">
+            <div class="input-group">
+                <label>Rép :</label>
+                <input type="number" class="set-reps" min="1" max="100" 
+                       placeholder="8" value="${setData ? setData.reps : ''}" required>
+            </div>
+            <div class="input-group">
+                <label>Poids (kg) :</label>
+                <input type="number" class="set-weight" step="0.5" min="0" 
+                       placeholder="80" value="${setData ? setData.weight : ''}" required>
+            </div>
+            <button type="button" class="btn btn-danger btn-mini" onclick="removeSet(this)">🗑️</button>
+        </div>
+    `;
+    
+    setsContainer.appendChild(setDiv);
+}
+
+function removeSet(button) {
+    const setRow = button.closest('.set-row');
+    const setsContainer = setRow.parentElement;
+    setRow.remove();
+    
+    // Renuméroter les séries
+    const sets = setsContainer.querySelectorAll('.set-row');
+    sets.forEach((set, index) => {
+        set.querySelector('.set-number').textContent = `Série ${index + 1}`;
+    });
 }
 
 function removeExercise(button) {
@@ -159,7 +209,6 @@ function removeExercise(button) {
     
     // Recalculer le nombre d'exercices
     const exercises = document.querySelectorAll('.exercise-form');
-    document.getElementById('exercise_count').value = exercises.length;
     
     // Masquer le bouton de validation si aucun exercice
     if (exercises.length === 0) {
@@ -170,21 +219,56 @@ function removeExercise(button) {
     exercises.forEach((exercise, index) => {
         const title = exercise.querySelector('h3');
         title.textContent = `🏋️ Exercice ${index + 1}`;
+    });
+}
+
+// Collecter les données avant soumission
+document.getElementById('session-form').addEventListener('submit', function(e) {
+    e.preventDefault();
+    
+    const exercisesData = [];
+    const exerciseForms = document.querySelectorAll('.exercise-form');
+    
+    exerciseForms.forEach((exerciseForm) => {
+        const name = exerciseForm.querySelector('.exercise-name-input').value.trim();
+        const sets = [];
         
-        // Renuméroter les noms des champs
-        const inputs = exercise.querySelectorAll('input');
-        inputs[0].name = `exercise_name_${index}`;
-        inputs[1].name = `sets_${index}`;
-        inputs[2].name = `reps_${index}`;
-        inputs[3].name = `weight_${index}`;
+        const setRows = exerciseForm.querySelectorAll('.set-row');
+        setRows.forEach((setRow, index) => {
+            const reps = setRow.querySelector('.set-reps').value;
+            const weight = setRow.querySelector('.set-weight').value;
+            
+            if (reps && weight) {
+                sets.push({
+                    number: index + 1,
+                    reps: parseInt(reps),
+                    weight: parseFloat(weight)
+                });
+            }
+        });
+        
+        if (name && sets.length > 0) {
+            exercisesData.push({
+                name: name,
+                sets: sets
+            });
+        }
     });
     
-    exerciseCount = exercises.length;
-}
+    if (exercisesData.length === 0) {
+        alert('⚠️ Veuillez ajouter au moins un exercice avec une série.');
+        return;
+    }
+    
+    // Stocker dans le champ caché
+    document.getElementById('exercises_data').value = JSON.stringify(exercisesData);
+    
+    // Soumettre le formulaire
+    this.submit();
+});
 
 // Variables globales pour l'autocomplétion
 let existingExercises = [];
-let currentFocusedInput = null;
 
 // Charger la liste des exercices existants
 async function loadExistingExercises() {
@@ -212,7 +296,7 @@ function setupAutocomplete(input) {
         // Filtrer les exercices existants
         const matches = existingExercises.filter(exercise => 
             exercise.toLowerCase().includes(query)
-        ).slice(0, 5); // Limiter à 5 suggestions
+        ).slice(0, 5);
         
         if (matches.length > 0) {
             suggestions.innerHTML = matches.map(exercise => 
@@ -222,7 +306,7 @@ function setupAutocomplete(input) {
             ).join('');
             suggestions.style.display = 'block';
             
-            // Ajouter les événements de clic aux suggestions
+            // Ajouter les événements de clic
             suggestions.querySelectorAll('.suggestion-item').forEach(item => {
                 item.addEventListener('click', function() {
                     input.value = this.dataset.exercise;
@@ -234,47 +318,14 @@ function setupAutocomplete(input) {
         }
     });
     
-    // Masquer les suggestions quand on clique ailleurs
     input.addEventListener('blur', function() {
         setTimeout(() => {
             suggestions.style.display = 'none';
         }, 200);
     });
-    
-    // Navigation au clavier dans les suggestions
-    input.addEventListener('keydown', function(e) {
-        const items = suggestions.querySelectorAll('.suggestion-item');
-        const activeItem = suggestions.querySelector('.suggestion-item.active');
-        
-        if (e.key === 'ArrowDown' && suggestions.style.display === 'block') {
-            e.preventDefault();
-            if (!activeItem) {
-                items[0]?.classList.add('active');
-            } else {
-                activeItem.classList.remove('active');
-                const next = activeItem.nextElementSibling || items[0];
-                next.classList.add('active');
-            }
-        } else if (e.key === 'ArrowUp' && suggestions.style.display === 'block') {
-            e.preventDefault();
-            if (!activeItem) {
-                items[items.length - 1]?.classList.add('active');
-            } else {
-                activeItem.classList.remove('active');
-                const prev = activeItem.previousElementSibling || items[items.length - 1];
-                prev.classList.add('active');
-            }
-        } else if (e.key === 'Enter' && activeItem) {
-            e.preventDefault();
-            input.value = activeItem.dataset.exercise;
-            suggestions.style.display = 'none';
-        } else if (e.key === 'Escape') {
-            suggestions.style.display = 'none';
-        }
-    });
 }
 
-// Ajouter automatiquement un premier exercice au chargement de la page
+// Initialisation au chargement
 document.addEventListener('DOMContentLoaded', function() {
     loadExistingExercises();
     
@@ -285,20 +336,8 @@ document.addEventListener('DOMContentLoaded', function() {
     // Pré-remplir les exercices du template
     const templateExercises = {{ template_exercises | tojson }};
     
-    templateExercises.forEach((exercise, index) => {
-        addExercise();
-        
-        // Remplir les champs avec les données du template
-        setTimeout(() => {
-            const exerciseForm = document.querySelectorAll('.exercise-form')[index];
-            if (exerciseForm) {
-                const inputs = exerciseForm.querySelectorAll('input');
-                inputs[0].value = exercise[0]; // Nom de l'exercice
-                inputs[1].value = exercise[1]; // Séries
-                inputs[2].value = exercise[2]; // Répétitions
-                inputs[3].value = exercise[3]; // Poids
-            }
-        }, 100);
+    templateExercises.forEach((exercise) => {
+        addExercise(exercise);
     });
     {% else %}
     // Ajouter un exercice vide si pas de template
@@ -374,12 +413,6 @@ document.addEventListener('DOMContentLoaded', function() {
     margin-bottom: 15px;
 }
 
-@media (min-width: 768px) {
-    .form-row:last-child {
-        grid-template-columns: 1fr 1fr 1fr;
-    }
-}
-
 .form-group {
     display: flex;
     flex-direction: column;
@@ -389,6 +422,78 @@ document.addEventListener('DOMContentLoaded', function() {
     margin-bottom: 5px;
     font-weight: 500;
     color: var(--text-primary);
+}
+
+/* Styles pour les séries individuelles */
+.sets-section {
+    margin-top: 20px;
+    padding: 15px;
+    background: var(--hover-bg);
+    border-radius: 8px;
+}
+
+.sets-section h4 {
+    margin: 0 0 15px 0;
+    color: var(--text-primary);
+    font-size: 16px;
+}
+
+.sets-container {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    margin-bottom: 15px;
+}
+
+.set-row {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+    padding: 12px;
+    background: var(--card-bg);
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+}
+
+.set-number {
+    font-weight: 600;
+    color: var(--primary-color);
+    min-width: 70px;
+}
+
+.set-inputs {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+    flex: 1;
+}
+
+.input-group {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.input-group label {
+    font-size: 14px;
+    font-weight: 500;
+    color: var(--text-secondary);
+    margin: 0;
+}
+
+.input-group input {
+    width: 80px;
+    padding: 8px;
+    border: 1px solid var(--border-color);
+    border-radius: 6px;
+    background: var(--secondary);
+    color: var(--text-primary);
+    font-size: 14px;
+}
+
+.btn-mini {
+    padding: 6px 10px;
+    font-size: 12px;
 }
 
 .session-controls {
@@ -495,11 +600,11 @@ document.addEventListener('DOMContentLoaded', function() {
     color: var(--primary);
 }
 
-.exercise-input {
+.exercise-name-input {
     width: 100%;
 }
 
-.autocomplete-container .exercise-input:focus {
+.autocomplete-container .exercise-name-input:focus {
     border-radius: 8px 8px 0 0;
 }
 
@@ -527,6 +632,25 @@ document.addEventListener('DOMContentLoaded', function() {
     .tab-btn.active {
         border-bottom-color: var(--border-color);
         border-right-color: var(--primary-color);
+    }
+    
+    .set-row {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+    
+    .set-inputs {
+        flex-direction: column;
+        align-items: flex-start;
+        width: 100%;
+    }
+    
+    .input-group {
+        width: 100%;
+    }
+    
+    .input-group input {
+        width: 100%;
     }
 }
 </style>

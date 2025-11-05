@@ -70,33 +70,30 @@ def init_db():
             conn.execute('''
                 CREATE TABLE IF NOT EXISTS sessions (
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
-                    name TEXT,
+                    name TEXT NOT NULL,
                     date TIMESTAMP DEFAULT CURRENT_TIMESTAMP
                 )
             ''')
             
-            # Table pour les exercices dans chaque séance
+            # Table pour les exercices dans chaque séance (sans sets, reps, weight)
             conn.execute('''
                 CREATE TABLE IF NOT EXISTS exercises (
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
                     session_id INTEGER NOT NULL,
                     exercise_name TEXT NOT NULL,
-                    sets INTEGER NOT NULL,
-                    reps INTEGER NOT NULL,
-                    weight REAL NOT NULL,
-                    FOREIGN KEY (session_id) REFERENCES sessions (id)
+                    FOREIGN KEY (session_id) REFERENCES sessions (id) ON DELETE CASCADE
                 )
             ''')
             
-            # Garder l'ancienne table pour compatibilité
+            # Table pour les séries individuelles
             conn.execute('''
-                CREATE TABLE IF NOT EXISTS performance (
+                CREATE TABLE IF NOT EXISTS sets (
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
-                    exercise TEXT NOT NULL,
-                    sets INTEGER NOT NULL,
+                    exercise_id INTEGER NOT NULL,
+                    set_number INTEGER NOT NULL,
                     reps INTEGER NOT NULL,
                     weight REAL NOT NULL,
-                    date TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                    FOREIGN KEY (exercise_id) REFERENCES exercises (id) ON DELETE CASCADE
                 )
             ''')
             
@@ -167,13 +164,13 @@ def ai_coach():
                 # Récupérer les exercices récents avec leurs performances
                 cur.execute("""
                     SELECT e.exercise_name, 
-                           e.sets, 
-                           e.reps, 
-                           e.weight,
                            s.name as session_name,
-                           s.date
+                           s.date,
+                           GROUP_CONCAT(st.set_number || 'x' || st.reps || '@' || st.weight, ', ') as sets_detail
                     FROM exercises e
                     JOIN sessions s ON e.session_id = s.id
+                    LEFT JOIN sets st ON e.id = st.exercise_id
+                    GROUP BY e.id, e.exercise_name, s.name, s.date
                     ORDER BY s.date DESC
                     LIMIT 30
                 """)
@@ -181,21 +178,37 @@ def ai_coach():
                 
                 # Calculer les statistiques par exercice
                 exercise_stats = {}
-                for ex in recent_exercises:
-                    exercise_name = ex[0]
+                
+                # Récupérer tous les sets pour calculer les max
+                cur.execute("""
+                    SELECT e.exercise_name, st.reps, st.weight
+                    FROM exercises e
+                    JOIN sets st ON e.id = st.exercise_id
+                    ORDER BY e.exercise_name
+                """)
+                all_sets = cur.fetchall()
+                
+                for exercise_name, reps, weight in all_sets:
                     if exercise_name not in exercise_stats:
                         exercise_stats[exercise_name] = {
-                            'max_weight': ex[3],
-                            'last_sets': ex[1],
-                            'last_reps': ex[2],
-                            'occurrences': 1
+                            'max_weight': weight,
+                            'max_1rm': calculate_1rm(weight, reps),
+                            'occurrences': 1,
+                            'last_reps': reps,
+                            'last_weight': weight
                         }
                     else:
-                        exercise_stats[exercise_name]['max_weight'] = max(
-                            exercise_stats[exercise_name]['max_weight'], 
-                            ex[3]
-                        )
-                        exercise_stats[exercise_name]['occurrences'] += 1
+                        stats = exercise_stats[exercise_name]
+                        if weight > stats['max_weight']:
+                            stats['max_weight'] = weight
+                        
+                        current_1rm = calculate_1rm(weight, reps)
+                        if current_1rm > stats['max_1rm']:
+                            stats['max_1rm'] = current_1rm
+                        
+                        stats['occurrences'] += 1
+                        stats['last_reps'] = reps
+                        stats['last_weight'] = weight
                 
                 # Construire le contexte d'historique
                 if sessions:
@@ -205,8 +218,8 @@ def ai_coach():
                         history_context += f"- {session[0]} : {session[2]} fois (dernière: {days_text})\n"
                     
                     history_context += "\n**Exercices pratiqués (avec charges maximales) :**\n"
-                    for exercise, stats in sorted(exercise_stats.items(), key=lambda x: x[1]['max_weight'], reverse=True)[:15]:
-                        history_context += f"- {exercise} : {stats['last_sets']}×{stats['last_reps']} @ {stats['max_weight']} kg (max) - {stats['occurrences']} fois\n"
+                    for exercise, stats in sorted(exercise_stats.items(), key=lambda x: x[1]['max_1rm'], reverse=True)[:15]:
+                        history_context += f"- {exercise} : dernière série {stats['last_reps']} reps @ {stats['last_weight']} kg (max 1RM: {stats['max_1rm']:.1f} kg) - {stats['occurrences']} séries au total\n"
                     
                     history_context += f"\n**Total d'exercices différents pratiqués :** {len(exercise_stats)}\n"
                 else:
@@ -352,7 +365,7 @@ Tu n'écriras rien de plus que ce qui est demandé dans ce format (sauf si tu do
 def start_session(session_name):
     """Démarrer une nouvelle séance basée sur un template existant"""
     # Récupérer les exercices de la dernière séance avec ce nom
-    exercises = []
+    exercises_with_sets = []
     
     try:
         with sqlite3.connect('database.db') as conn:
@@ -369,14 +382,46 @@ def start_session(session_name):
             
             if last_session:
                 session_id = last_session[0]
-                # Récupérer les exercices de cette séance
+                # Récupérer les exercices avec leurs séries
                 cur.execute("""
-                    SELECT exercise_name, sets, reps, weight 
-                    FROM exercises 
-                    WHERE session_id = ?
-                    ORDER BY id
+                    SELECT e.exercise_name, st.set_number, st.reps, st.weight
+                    FROM exercises e
+                    LEFT JOIN sets st ON e.id = st.exercise_id
+                    WHERE e.session_id = ?
+                    ORDER BY e.id, st.set_number
                 """, (session_id,))
-                exercises = cur.fetchall()
+                
+                raw_data = cur.fetchall()
+                
+                # Regrouper par exercice
+                current_exercise = None
+                current_sets = []
+                
+                for row in raw_data:
+                    exercise_name, set_number, reps, weight = row
+                    
+                    if current_exercise != exercise_name:
+                        if current_exercise is not None:
+                            exercises_with_sets.append({
+                                'name': current_exercise,
+                                'sets': current_sets
+                            })
+                        current_exercise = exercise_name
+                        current_sets = []
+                    
+                    if set_number is not None:
+                        current_sets.append({
+                            'number': set_number,
+                            'reps': reps,
+                            'weight': weight
+                        })
+                
+                # Ajouter le dernier exercice
+                if current_exercise is not None:
+                    exercises_with_sets.append({
+                        'name': current_exercise,
+                        'sets': current_sets
+                    })
                 
     except sqlite3.Error as e:
         print(f"❌ Erreur lors de la récupération de la séance template: {e}")
@@ -384,7 +429,7 @@ def start_session(session_name):
     # Rediriger vers la page de suivi avec les données pré-remplies
     return render_template('track.html', 
                          session_template_name=session_name, 
-                         template_exercises=exercises,
+                         template_exercises=exercises_with_sets,
                          message=None,
                          recent_sessions=[])
 
@@ -400,42 +445,60 @@ def track_performance():
             try:
                 # Créer une nouvelle séance
                 session_name = request.form.get('session_name', 'Séance du ' + str(request.form.get('date', '')))
-                exercises_data = []
                 
-                # Récupérer tous les exercices de la séance
-                exercise_count = int(request.form.get('exercise_count', 0))
-                for i in range(exercise_count):
-                    exercise_name = request.form.get(f'exercise_name_{i}')
-                    sets = request.form.get(f'sets_{i}')
-                    reps = request.form.get(f'reps_{i}')
-                    weight = request.form.get(f'weight_{i}')
-                    
-                    if exercise_name and sets and reps and weight:
-                        exercises_data.append({
-                            'name': exercise_name.strip(),
-                            'sets': int(sets),
-                            'reps': int(reps),
-                            'weight': float(weight)
-                        })
+                # Récupérer les données JSON des exercices
+                exercises_json = request.form.get('exercises_data')
                 
-                if exercises_data:
-                    with sqlite3.connect('database.db') as conn:
-                        # Créer la séance
-                        cur = conn.cursor()
-                        cur.execute("INSERT INTO sessions (name) VALUES (?)", (session_name,))
-                        session_id = cur.lastrowid
-                        
-                        # Ajouter tous les exercices
-                        for exercise in exercises_data:
-                            conn.execute(
-                                "INSERT INTO exercises (session_id, exercise_name, sets, reps, weight) VALUES (?, ?, ?, ?, ?)",
-                                (session_id, exercise['name'], exercise['sets'], exercise['reps'], exercise['weight'])
-                            )
-                        
-                    message = f"✅ Séance '{session_name}' enregistrée avec {len(exercises_data)} exercice(s)!"
+                if not exercises_json:
+                    message = "⚠️ Aucune donnée d'exercice reçue."
                 else:
-                    message = "⚠️ Aucun exercice valide trouvé dans la séance."
+                    exercises_data = json.loads(exercises_json)
                     
+                    if exercises_data:
+                        with sqlite3.connect('database.db') as conn:
+                            cur = conn.cursor()
+                            
+                            # Créer la séance
+                            cur.execute("INSERT INTO sessions (name) VALUES (?)", (session_name,))
+                            session_id = cur.lastrowid
+                            
+                            total_exercises = 0
+                            total_sets = 0
+                            
+                            # Ajouter tous les exercices et leurs séries
+                            for exercise in exercises_data:
+                                exercise_name = exercise.get('name', '').strip()
+                                sets = exercise.get('sets', [])
+                                
+                                if exercise_name and sets:
+                                    # Créer l'exercice
+                                    cur.execute(
+                                        "INSERT INTO exercises (session_id, exercise_name) VALUES (?, ?)",
+                                        (session_id, exercise_name)
+                                    )
+                                    exercise_id = cur.lastrowid
+                                    total_exercises += 1
+                                    
+                                    # Ajouter toutes les séries
+                                    for set_data in sets:
+                                        set_number = set_data.get('number')
+                                        reps = set_data.get('reps')
+                                        weight = set_data.get('weight')
+                                        
+                                        if set_number and reps is not None and weight is not None:
+                                            cur.execute(
+                                                "INSERT INTO sets (exercise_id, set_number, reps, weight) VALUES (?, ?, ?, ?)",
+                                                (exercise_id, set_number, int(reps), float(weight))
+                                            )
+                                            total_sets += 1
+                            
+                            conn.commit()
+                            message = f"✅ Séance '{session_name}' enregistrée avec {total_exercises} exercice(s) et {total_sets} série(s)!"
+                    else:
+                        message = "⚠️ Aucun exercice valide trouvé dans la séance."
+                    
+            except json.JSONDecodeError as e:
+                message = f"❌ Erreur de format des données : {str(e)}"
             except (ValueError, TypeError) as e:
                 message = f"❌ Erreur dans les données saisies : {str(e)}"
             except sqlite3.Error as e:
@@ -448,7 +511,7 @@ def track_performance():
         with sqlite3.connect('database.db') as conn:
             cur = conn.cursor()
             cur.execute("""
-                SELECT s.id, s.name, s.date, COUNT(e.id) as exercise_count
+                SELECT s.id, s.name, s.date, COUNT(DISTINCT e.id) as exercise_count
                 FROM sessions s
                 LEFT JOIN exercises e ON s.id = e.session_id
                 GROUP BY s.id, s.name, s.date
@@ -485,28 +548,44 @@ def view_session(session_id):
             session = cur.fetchone()
             
             if session:
-                # Récupérer les exercices de la séance
-                cur.execute("SELECT * FROM exercises WHERE session_id = ?", (session_id,))
-                exercises = cur.fetchall() or []
+                # Récupérer les exercices avec leurs séries
+                cur.execute("""
+                    SELECT e.id, e.exercise_name, st.set_number, st.reps, st.weight
+                    FROM exercises e
+                    LEFT JOIN sets st ON e.id = st.exercise_id
+                    WHERE e.session_id = ?
+                    ORDER BY e.id, st.set_number
+                """, (session_id,))
                 
-                # Calculer les statistiques de la séance
-                if exercises:
-                    for exercise in exercises:
-                        try:
-                            # exercise = [id, session_id, exercise_name, sets, reps, weight]
-                            sets = exercise[3] if exercise[3] is not None else 0
-                            reps = exercise[4] if exercise[4] is not None else 0
-                            weight = exercise[5] if exercise[5] is not None else 0.0
-                            
-                            session_stats['total_sets'] += sets
-                            session_stats['total_volume'] += (sets * reps * weight)
-                        except (IndexError, TypeError) as e:
-                            print(f"Erreur lors du calcul des stats pour l'exercice {exercise}: {e}")
-                            continue
+                raw_data = cur.fetchall() or []
+                
+                # Regrouper les séries par exercice
+                exercises_dict = {}
+                for row in raw_data:
+                    exercise_id, exercise_name, set_number, reps, weight = row
+                    
+                    if exercise_id not in exercises_dict:
+                        exercises_dict[exercise_id] = {
+                            'id': exercise_id,
+                            'name': exercise_name,
+                            'sets': []
+                        }
+                    
+                    if set_number is not None:
+                        exercises_dict[exercise_id]['sets'].append({
+                            'number': set_number,
+                            'reps': reps,
+                            'weight': weight
+                        })
+                        
+                        # Calculer les stats
+                        session_stats['total_sets'] += 1
+                        session_stats['total_volume'] += (reps * weight)
+                
+                exercises = list(exercises_dict.values())
                             
     except sqlite3.Error as e:
         print(f"Erreur de base de données dans view_session: {e}")
-        # Initialiser la base de données si elle n'existe pas
         init_db()
     except Exception as e:
         print(f"Erreur inattendue dans view_session: {e}")
@@ -515,138 +594,70 @@ def view_session(session_id):
 
 @app.route('/progress')
 def view_progress():
-    old_entries = []
-    new_entries = []
     exercise_stats = {}
     
     try:
         with sqlite3.connect('database.db') as conn:
             cur = conn.cursor()
             
-            # Récupérer toutes les performances de l'ancienne table
-            try:
-                cur.execute("SELECT * FROM performance ORDER BY date DESC")
-                old_entries = cur.fetchall() or []
-            except sqlite3.OperationalError:
-                # Table performance n'existe pas encore
-                old_entries = []
+            # Récupérer toutes les séries de tous les exercices
+            cur.execute("""
+                SELECT e.exercise_name, st.reps, st.weight, s.date
+                FROM exercises e
+                JOIN sets st ON e.id = st.exercise_id
+                JOIN sessions s ON e.session_id = s.id
+                ORDER BY s.date DESC
+            """)
+            all_sets = cur.fetchall() or []
             
-            # Récupérer toutes les performances des nouvelles séances
-            try:
-                cur.execute("""
-                    SELECT e.exercise_name, e.sets, e.reps, e.weight, s.date, s.name
-                    FROM exercises e
-                    JOIN sessions s ON e.session_id = s.id
-                    ORDER BY s.date DESC
-                """)
-                new_entries = cur.fetchall() or []
-            except sqlite3.OperationalError:
-                # Tables exercises/sessions n'existent pas encore
-                new_entries = []
+            # Calculer les statistiques par exercice
+            for exercise_name, reps, weight, date in all_sets:
+                if exercise_name and reps > 0 and weight > 0:
+                    current_1rm = calculate_1rm(weight, reps)
+                    current_volume = reps * weight
+                    
+                    if exercise_name not in exercise_stats:
+                        exercise_stats[exercise_name] = {
+                            'max_weight': weight,
+                            'max_1rm': current_1rm,
+                            'best_1rm_reps': reps,
+                            'best_1rm_weight': weight,
+                            'best_volume_reps': reps,
+                            'best_volume_weight': weight,
+                            'best_volume_total': current_volume,
+                            'total_sets': 1,
+                            'has_actual_1rm': (reps == 1),
+                            'last_date': date
+                        }
+                    else:
+                        stats = exercise_stats[exercise_name]
+                        
+                        # Mettre à jour le poids max
+                        if weight > stats['max_weight']:
+                            stats['max_weight'] = weight
+                        
+                        # Mettre à jour le 1RM (prendre le plus élevé)
+                        if current_1rm > stats['max_1rm']:
+                            stats['max_1rm'] = current_1rm
+                            stats['best_1rm_reps'] = reps
+                            stats['best_1rm_weight'] = weight
+                            if reps == 1:
+                                stats['has_actual_1rm'] = True
+                        
+                        # Mettre à jour le meilleur volume
+                        if current_volume > stats['best_volume_total']:
+                            stats['best_volume_reps'] = reps
+                            stats['best_volume_weight'] = weight
+                            stats['best_volume_total'] = current_volume
+                        
+                        stats['total_sets'] += 1
             
     except sqlite3.Error as e:
         print(f"Erreur de base de données dans view_progress: {e}")
-        # Initialiser la base de données si elle n'existe pas
         init_db()
-        old_entries = []
-        new_entries = []
+        exercise_stats = {}
     except Exception as e:
         print(f"Erreur inattendue dans view_progress: {e}")
-        old_entries = []
-        new_entries = []
-    
-    # Calculer les statistiques par exercice
-    try:
-        # Traiter les anciennes entrées
-        for entry in old_entries:
-            if len(entry) >= 5:
-                exercise_name = entry[1] if entry[1] else "Exercice inconnu"
-                sets = entry[2] if entry[2] is not None else 0
-                reps = entry[3] if entry[3] is not None else 0
-                weight = entry[4] if entry[4] is not None else 0.0
-                
-                if exercise_name and sets > 0 and reps > 0 and weight > 0:
-                    if exercise_name not in exercise_stats:
-                        exercise_stats[exercise_name] = {
-                            'max_weight': weight,
-                            'max_1rm': calculate_1rm(weight, reps),
-                            'best_volume_sets': sets,
-                            'best_volume_reps': reps,
-                            'best_volume_weight': weight,
-                            'best_volume_total': sets * reps * weight,
-                            'total_sessions': 1,
-                            'has_actual_1rm': (reps == 1)
-                        }
-                    else:
-                        stats = exercise_stats[exercise_name]
-                        
-                        # Mettre à jour le poids max
-                        if weight > stats['max_weight']:
-                            stats['max_weight'] = weight
-                        
-                        # Mettre à jour le 1RM
-                        current_1rm = calculate_1rm(weight, reps)
-                        if current_1rm > stats['max_1rm']:
-                            stats['max_1rm'] = current_1rm
-                            if reps == 1:
-                                stats['has_actual_1rm'] = True
-                        
-                        # Mettre à jour le meilleur volume
-                        current_volume = sets * reps * weight
-                        if current_volume > stats['best_volume_total']:
-                            stats['best_volume_sets'] = sets
-                            stats['best_volume_reps'] = reps
-                            stats['best_volume_weight'] = weight
-                            stats['best_volume_total'] = current_volume
-                        
-                        stats['total_sessions'] += 1
-        
-        # Traiter les nouvelles entrées (exercices dans les séances)
-        for entry in new_entries:
-            if len(entry) >= 4:
-                exercise_name = entry[0] if entry[0] else "Exercice inconnu"
-                sets = entry[1] if entry[1] is not None else 0
-                reps = entry[2] if entry[2] is not None else 0
-                weight = entry[3] if entry[3] is not None else 0.0
-                
-                if exercise_name and sets > 0 and reps > 0 and weight > 0:
-                    if exercise_name not in exercise_stats:
-                        exercise_stats[exercise_name] = {
-                            'max_weight': weight,
-                            'max_1rm': calculate_1rm(weight, reps),
-                            'best_volume_sets': sets,
-                            'best_volume_reps': reps,
-                            'best_volume_weight': weight,
-                            'best_volume_total': sets * reps * weight,
-                            'total_sessions': 1,
-                            'has_actual_1rm': (reps == 1)
-                        }
-                    else:
-                        stats = exercise_stats[exercise_name]
-                        
-                        # Mettre à jour le poids max
-                        if weight > stats['max_weight']:
-                            stats['max_weight'] = weight
-                        
-                        # Mettre à jour le 1RM
-                        current_1rm = calculate_1rm(weight, reps)
-                        if current_1rm > stats['max_1rm']:
-                            stats['max_1rm'] = current_1rm
-                            if reps == 1:
-                                stats['has_actual_1rm'] = True
-                        
-                        # Mettre à jour le meilleur volume
-                        current_volume = sets * reps * weight
-                        if current_volume > stats['best_volume_total']:
-                            stats['best_volume_sets'] = sets
-                            stats['best_volume_reps'] = reps
-                            stats['best_volume_weight'] = weight
-                            stats['best_volume_total'] = current_volume
-                        
-                        stats['total_sessions'] += 1
-        
-    except Exception as e:
-        print(f"Erreur lors du calcul des statistiques : {e}")
         exercise_stats = {}
     
     # Trier les exercices par 1RM décroissant
@@ -657,7 +668,6 @@ def view_progress():
         sorted_exercises = []
         
     return render_template('progress.html', 
-                         entries=old_entries, 
                          exercise_stats=sorted_exercises,
                          total_exercises=len(exercise_stats))
 
@@ -692,31 +702,15 @@ def get_exercises():
         with sqlite3.connect('database.db') as conn:
             cur = conn.cursor()
             
-            # Récupérer les exercices de l'ancienne table
-            try:
-                cur.execute("SELECT DISTINCT exercise FROM performance WHERE exercise IS NOT NULL AND exercise != ''")
-                old_exercises = cur.fetchall()
-                for exercise in old_exercises:
-                    if exercise[0] and exercise[0].strip():
-                        exercises.add(exercise[0].strip())
-            except sqlite3.OperationalError:
-                # Table performance n'existe pas encore
-                pass
-            
-            # Récupérer les exercices des nouvelles séances
-            try:
-                cur.execute("SELECT DISTINCT exercise_name FROM exercises WHERE exercise_name IS NOT NULL AND exercise_name != ''")
-                new_exercises = cur.fetchall()
-                for exercise in new_exercises:
-                    if exercise[0] and exercise[0].strip():
-                        exercises.add(exercise[0].strip())
-            except sqlite3.OperationalError:
-                # Table exercises n'existe pas encore
-                pass
+            # Récupérer les exercices distincts
+            cur.execute("SELECT DISTINCT exercise_name FROM exercises WHERE exercise_name IS NOT NULL AND exercise_name != ''")
+            exercises_data = cur.fetchall()
+            for exercise in exercises_data:
+                if exercise[0] and exercise[0].strip():
+                    exercises.add(exercise[0].strip())
                 
     except sqlite3.Error as e:
         print(f"Erreur de base de données dans get_exercises: {e}")
-        # Initialiser la base de données si elle n'existe pas
         init_db()
         exercises = set()
     except Exception as e:

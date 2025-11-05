@@ -21,22 +21,29 @@
             {% for exercise in exercises %}
             <div class="exercise-detail">
                 <div class="exercise-name">
-                    <strong>{{ exercise[2] }}</strong>
+                    <strong>{{ exercise.name }}</strong>
                 </div>
-                <div class="exercise-stats">
-                    <span class="stat">
-                        🔢 {{ exercise[3] }} série(s)
-                    </span>
-                    <span class="stat">
-                        🔁 {{ exercise[4] }} répétitions
-                    </span>
-                    <span class="stat">
-                        ⚖️ {{ exercise[5] }} kg
-                    </span>
+                
+                {% if exercise.sets %}
+                <div class="sets-detail">
+                    {% for set in exercise.sets %}
+                    <div class="set-detail-row">
+                        <span class="set-badge">Série {{ set.number }}</span>
+                        <span class="set-info">{{ set.reps }} rép × {{ set.weight }} kg</span>
+                        <span class="set-volume">= {{ set.reps * set.weight }} kg</span>
+                    </div>
+                    {% endfor %}
                 </div>
-                <div class="exercise-volume">
-                    <small>Volume total: {{ exercise[3] * exercise[4] * exercise[5] }} kg</small>
+                
+                <div class="exercise-summary">
+                    <small>
+                        📊 Total : {{ exercise.sets|length }} série(s) | 
+                        💪 Volume : {{ exercise.sets|sum(attribute='reps')|default(0) * exercise.sets|sum(attribute='weight')|default(0) / exercise.sets|length if exercise.sets else 0 }} kg
+                    </small>
                 </div>
+                {% else %}
+                <p class="no-sets">Aucune série enregistrée</p>
+                {% endif %}
             </div>
             {% endfor %}
               <div class="session-summary">
@@ -137,8 +144,63 @@
 
 .exercise-name {
     font-size: 18px;
-    margin-bottom: 10px;
+    margin-bottom: 15px;
     color: var(--text-primary);
+}
+
+.sets-detail {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin-bottom: 12px;
+}
+
+.set-detail-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 8px 12px;
+    background: var(--hover-bg);
+    border-radius: 8px;
+    border-left: 3px solid var(--primary-color);
+}
+
+.set-badge {
+    background: var(--primary-color);
+    color: white;
+    padding: 4px 10px;
+    border-radius: 12px;
+    font-size: 12px;
+    font-weight: 600;
+    min-width: 65px;
+    text-align: center;
+}
+
+.set-info {
+    flex: 1;
+    font-weight: 500;
+    color: var(--text-primary);
+}
+
+.set-volume {
+    color: var(--accent);
+    font-weight: 600;
+    font-size: 14px;
+}
+
+.exercise-summary {
+    margin-top: 10px;
+    padding-top: 10px;
+    border-top: 1px solid var(--border-color);
+    color: var(--text-secondary);
+    font-style: italic;
+}
+
+.no-sets {
+    color: var(--text-secondary);
+    font-style: italic;
+    text-align: center;
+    padding: 20px;
 }
 
 .exercise-stats {
