@@ -997,11 +997,19 @@ def programme_save_from_ai():
         ordre = 1
         
         for ligne in lignes:
-            # Filtrer les lignes qui ressemblent à des titres de séance
-            if any(mot in ligne.lower() for mot in ['séance', 'jour', 'session', 'workout', 'push', 'pull', 'legs', 'full']):
+            # Nettoyer la ligne pour le test
+            ligne_lower = ligne.lower().strip('*#- ').strip()
+            
+            # Filtrer UNIQUEMENT les lignes qui COMMENCENT par les mots-clés
+            if (ligne_lower.startswith('séance') or 
+                ligne_lower.startswith('jour') or 
+                ligne_lower.startswith('session') or 
+                ligne_lower.startswith('workout') or 
+                ligne_lower.startswith('face')):  # Ajout de "face" pour Face Pull, etc.
+                
                 # Nettoyer la ligne
                 ligne_clean = ligne.strip('*#- ').strip()
-                if ligne_clean and len(ligne_clean) > 3:  # Éviter les lignes trop courtes
+                if ligne_clean and len(ligne_clean) > 3 and len(ligne_clean) < 150:  # Entre 3 et 150 caractères
                     seances.append({
                         'ordre': ordre,
                         'nom': ligne_clean[:200]  # Limiter la longueur
