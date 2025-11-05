@@ -322,7 +322,7 @@ Le temps de repos entre les séries
 
 Tu rédigeras de la façon suivante (note le changement de "POIDS" pour "RIR") : NOM : SÉRIE X RÉPÉTITIONS @ RIR X, REPOS Exemple : Développé couché : 4 x 8-10 reps @ RIR 2, 2-3 min repos
 
-Si c'est un nouveau programme, tu dois spécifier la durée du cycle. Exemple : "Voici votre programme pour les 4 prochaines semaines. Commencez la semaine 1 avec les RIR indiqués."
+Si c'est un nouveau programme, tu dois spécifier la durée du cycle. Exemple : "Voici votre programme pour les 5 prochaines semaines (4 semaines d'entrainement et 1 semaine de deload). Commencez la semaine 1 avec les RIR indiqués."
 
 **IMPORTANT : Utilise l'historique fourni pour suggérer des charges appropriées et une progression réaliste.**
 
