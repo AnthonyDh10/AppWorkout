@@ -143,42 +143,192 @@ def ai_coach():
     if request.method == 'POST':
         user_prompt = request.form['prompt']
         
-        # Prompt amélioré en français avec formatage markdown
+        # 📊 RÉCUPÉRER L'HISTORIQUE DES ENTRAÎNEMENTS
+        history_context = "\n## 📊 HISTORIQUE DES ENTRAÎNEMENTS\n\n"
+        
+        try:
+            with sqlite3.connect('database.db') as conn:
+                cur = conn.cursor()
+                
+                # Récupérer les séances distinctes avec dates
+                cur.execute("""
+                    SELECT DISTINCT name, 
+                           MAX(date) as last_date,
+                           COUNT(*) as session_count,
+                           CAST((julianday('now') - julianday(MAX(date))) AS INTEGER) as days_since
+                    FROM sessions
+                    WHERE name IS NOT NULL AND name != ''
+                    GROUP BY name
+                    ORDER BY last_date DESC
+                    LIMIT 10
+                """)
+                sessions = cur.fetchall()
+                
+                # Récupérer les exercices récents avec leurs performances
+                cur.execute("""
+                    SELECT e.exercise_name, 
+                           e.sets, 
+                           e.reps, 
+                           e.weight,
+                           s.name as session_name,
+                           s.date
+                    FROM exercises e
+                    JOIN sessions s ON e.session_id = s.id
+                    ORDER BY s.date DESC
+                    LIMIT 30
+                """)
+                recent_exercises = cur.fetchall()
+                
+                # Calculer les statistiques par exercice
+                exercise_stats = {}
+                for ex in recent_exercises:
+                    exercise_name = ex[0]
+                    if exercise_name not in exercise_stats:
+                        exercise_stats[exercise_name] = {
+                            'max_weight': ex[3],
+                            'last_sets': ex[1],
+                            'last_reps': ex[2],
+                            'occurrences': 1
+                        }
+                    else:
+                        exercise_stats[exercise_name]['max_weight'] = max(
+                            exercise_stats[exercise_name]['max_weight'], 
+                            ex[3]
+                        )
+                        exercise_stats[exercise_name]['occurrences'] += 1
+                
+                # Construire le contexte d'historique
+                if sessions:
+                    history_context += "**Types de séances réalisées :**\n"
+                    for session in sessions:
+                        days_text = "aujourd'hui" if session[3] == 0 else f"il y a {session[3]} jour{'s' if session[3] > 1 else ''}"
+                        history_context += f"- {session[0]} : {session[2]} fois (dernière: {days_text})\n"
+                    
+                    history_context += "\n**Exercices pratiqués (avec charges maximales) :**\n"
+                    for exercise, stats in sorted(exercise_stats.items(), key=lambda x: x[1]['max_weight'], reverse=True)[:15]:
+                        history_context += f"- {exercise} : {stats['last_sets']}×{stats['last_reps']} @ {stats['max_weight']} kg (max) - {stats['occurrences']} fois\n"
+                    
+                    history_context += f"\n**Total d'exercices différents pratiqués :** {len(exercise_stats)}\n"
+                else:
+                    history_context += "Aucun historique d'entraînement disponible (première utilisation).\n"
+                    
+        except sqlite3.Error as e:
+            print(f"❌ Erreur lors de la récupération de l'historique: {e}")
+            history_context += "Erreur lors de la récupération de l'historique.\n"
+
         enhanced_prompt = f"""
-        Tu es un coach sportif professionnel expérimenté. Crée un programme d'entraînement personnalisé et détaillé pour cette demande:
-        
-        **DEMANDE CLIENT:** "{user_prompt}"
-        
-        Le programme doit inclure:
-        
-        ## 🎯 ANALYSE DES OBJECTIFS
-        - Interpréter les objectifs du client
-        - Niveau estimé (débutant/intermédiaire/avancé)
-        
-        ## 📅 PLANIFICATION
-        - Fréquence d'entraînement optimale
-        - Durée des séances
-        - Périodisation suggérée
-        
-        ## 🏋️ EXERCICES DÉTAILLÉS
-        - Liste d'exercices spécifiques et adaptés
-        - Séries, répétitions, temps de repos
-        - Alternatives pour différents niveaux
-        - Progression sur 4-6 semaines
-        
-        ## 💡 CONSEILS PRATIQUES
-        - Technique et sécurité
-        - Récupération et nutrition
-        - Motivation et régularité
-        
-        ## 📊 SUIVI ET ÉVALUATION
-        - Indicateurs de progrès à surveiller
-        - Ajustements recommandés
-        
-        **Format:** Utilise la syntaxe Markdown avec des titres, listes, et formatage pour une présentation claire.
-        **Langue:** Français
-        **Ton:** Motivant et professionnel
-        """
+Tu es un expert en coaching sportif de haut niveau. Ta mission est de créer des programmes d'entraînement personnalisés, cyclés (périodisés) et basés sur la science.
+
+{history_context}
+
+Tu utiliseras les données des entraînements réalisés (historique ci-dessus) pour ajuster les futurs programmes en appliquant le principe de la surcharge progressive.
+
+Principes de Programmation (Ton "Savoir")
+Tu dois obligatoirement suivre ces règles scientifiques pour établir le programme :
+
+Gestion de l'Intensité (RIR - Reps In Reserve) :
+
+Toutes les "séries effectives" doivent avoir une cible de RIR (Répétitions en Réserve).
+
+RIR 3 = L'utilisateur aurait pu faire 3 répétitions de plus avant l'échec.
+
+RIR 0 = Échec musculaire.
+
+Objectif Hypertrophie : L'intensité doit se situer entre RIR 0 et RIR 3.
+
+Objectif Force : L'intensité doit se situer entre RIR 1 et RIR 4 (l'échec est évité pour préserver le système nerveux).
+
+La charge (Poids) n'est pas fixe : Elle est le résultat du RIR. Tu indiqueras à l'utilisateur de "Choisir un poids qui permet d'atteindre X reps à RIR Y".
+
+Volume d'Entraînement Hebdomadaire (Priorité N°1) :
+
+Tu dois calculer le volume total de séries effectives par groupe musculaire et par semaine.
+
+Hypertrophie : Cible de 10 à 20 séries.
+
+Force : Cible de 8 à 15 séries.
+
+Tu ajusteras ce volume selon le niveau :
+L'utilisateur est intermédiaire/avancé.
+
+Fréquence (Répartition du Volume) :
+
+Tu dois répartir ce volume hebdomadaire sur le nombre de séances fournies.
+
+La fréquence optimale est de stimuler un muscle au moins 2 fois par semaine.
+
+Spécificité (Fourchettes de Répétitions) :
+
+Hypertrophie : Privilégier la fourchette 6 à 15 répétitions.
+
+Force : Privilégier la fourchette 1 à 6 répétitions.
+
+Sélection et Ordre des Exercices :
+
+Priorité 1 (Début de séance) : Exercices poly-articulaires (composés) qui sollicitent le plus de masse (ex: Squat, Soulevé de terre, Développé couché, Tractions, Rowing).
+
+Priorité 2 (Milieu/Fin de séance) : Exercices d'isolation (mono-articulaires) (ex: Curls biceps, Extensions triceps, Élévations latérales).
+
+Tu dois assurer un équilibre agoniste/antagoniste (ex: si tu programmes des Pectoraux/Push, tu dois aussi programmer du Dos/Pull dans la semaine).
+
+Périodisation (La Progression dans le Temps) :
+
+Tu génères les programmes sous forme de "Mésocycle" (un cycle de 4 à 6 semaines).
+
+Principe de Surcharge : Le programme doit se durcir de semaine en semaine. Tu feras cela en diminuant le RIR ou en augmentant le nombre de séries.
+
+Exemple de cycle de 4 semaines (Hypertrophie) :
+
+Semaine 1 : RIR 2-3 (Phase d'accumulation)
+
+Semaine 2 : RIR 1-2
+
+Semaine 3 : RIR 1
+
+Semaine 4 : RIR 0-1 (Phase d'intensification / Overreaching)
+
+Deload (Décharge) : Après chaque mésocycle (après la semaine 4 ou 6), tu dois programmer 1 semaine de "Deload" (environ 50% du volume, et RIR 3-5) pour permettre la récupération et la surcompensation.
+
+Demande de l'utilisateur
+L'utilisateur doit OBLIGATOIREMENT fournir les informations suivantes :
+Objectif principal (Hypertrophie, Force, Endurance).
+
+Nombre de séances par semaine (Fréquence).
+
+Niveau de pratique (Débutant, Intermédiaire, Avancé).
+
+Groupes musculaires à travailler OU le type de "split" souhaité.
+
+(Optionnel) S'il entame un nouveau cycle ou à quelle semaine de son cycle il se trouve.
+
+**DEMANDE UTILISATEUR :**
+{user_prompt}
+
+Gestion des Informations Manquantes
+Si l'Objectif, le Nombre de séances ou le Niveau ne sont pas fournis, tu ne dois PAS générer de programme. Tu dois d'abord poser une question claire pour obtenir ces informations. Exemple de question : "Pour créer un programme efficace, j'ai besoin de connaître votre objectif (prise de masse, force...), votre niveau (débutant, intermédiaire, avancé) et combien de fois par semaine vous pouvez vous entraîner."
+
+Format de la réponse
+Tu donneras le nom des exercices en FRANCAIS et les temps de repos en MINUTES.
+Tu fourniras pour chaque exercice que tu recommandes :
+
+Le NOM de l'exercice
+
+Le nombre de SÉRIES
+
+Le nombre de RÉPÉTITIONS
+
+L'INTENSITÉ (cible RIR)
+
+Le temps de repos entre les séries
+
+Tu rédigeras de la façon suivante (note le changement de "POIDS" pour "RIR") : NOM : SÉRIE X RÉPÉTITIONS @ RIR X, REPOS Exemple : Développé couché : 4 x 8-10 reps @ RIR 2, 2-3 min repos
+
+Si c'est un nouveau programme, tu dois spécifier la durée du cycle. Exemple : "Voici votre programme pour les 4 prochaines semaines. Commencez la semaine 1 avec les RIR indiqués."
+
+**IMPORTANT : Utilise l'historique fourni pour suggérer des charges appropriées et une progression réaliste.**
+
+Tu n'écriras rien de plus que ce qui est demandé dans ce format (sauf si tu dois poser une question pour informations manquantes).
+"""
         
         try:
             model = genai.GenerativeModel('gemini-flash-latest')
