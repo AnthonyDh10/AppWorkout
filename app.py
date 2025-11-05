@@ -951,10 +951,39 @@ def programme_seance_toggle(seance_id):
     
     return redirect('/programme')
 
+@app.route('/programme/start-seance/<int:seance_id>')
+def programme_start_seance(seance_id):
+    """Démarrer une séance depuis un programme"""
+    try:
+        with sqlite3.connect('database.db') as conn:
+            cur = conn.cursor()
+            
+            # Récupérer les infos de la séance du programme
+            cur.execute("SELECT nom_seance, description FROM programme_seances WHERE id = ?", (seance_id,))
+            seance = cur.fetchone()
+            
+            if seance:
+                # Nettoyer le nom de la séance (enlever les balises HTML)
+                import re
+                nom_seance = re.sub('<[^<]+?>', '', seance[0])  # Supprimer les balises HTML
+                
+                # Rediriger vers la page de création de séance avec le nom pré-rempli
+                return render_template('track.html', 
+                                     session_template_name=nom_seance,
+                                     template_exercises=[],
+                                     message=None,
+                                     recent_sessions=[])
+    except sqlite3.Error as e:
+        print(f"❌ Erreur: {e}")
+    
+    return redirect('/track')
+
 @app.route('/programme/save-from-ai', methods=['POST'])
 def programme_save_from_ai():
     """Sauvegarder un programme généré par l'IA"""
     try:
+        import re
+        
         nom = request.form.get('nom', '').strip()
         description = request.form.get('description', '').strip()
         programme_text = request.form.get('programme_text', '').strip()
@@ -962,21 +991,26 @@ def programme_save_from_ai():
         if not nom or not programme_text:
             return jsonify({'success': False, 'message': 'Données manquantes'})
         
+        # Enlever toutes les balises HTML du texte
+        programme_text_clean = re.sub('<[^<]+?>', '', programme_text)
+        
         # Parser le texte du programme (simple parsing ligne par ligne)
-        # Format attendu: chaque ligne avec un exercice = une séance
-        lignes = [l.strip() for l in programme_text.split('\n') if l.strip()]
+        lignes = [l.strip() for l in programme_text_clean.split('\n') if l.strip()]
         seances = []
         ordre = 1
         
         for ligne in lignes:
             # Filtrer les lignes qui ressemblent à des titres de séance
-            if any(mot in ligne.lower() for mot in ['séance', 'jour', 'session', 'workout']):
-                seances.append({
-                    'ordre': ordre,
-                    'nom': ligne[:200],  # Limiter la longueur
-                    'description': ''
-                })
-                ordre += 1
+            if any(mot in ligne.lower() for mot in ['séance', 'jour', 'session', 'workout', 'push', 'pull', 'legs', 'full']):
+                # Nettoyer la ligne
+                ligne_clean = ligne.strip('*#- ').strip()
+                if ligne_clean and len(ligne_clean) > 3:  # Éviter les lignes trop courtes
+                    seances.append({
+                        'ordre': ordre,
+                        'nom': ligne_clean[:200],  # Limiter la longueur
+                        'description': ''
+                    })
+                    ordre += 1
         
         if seances:
             with sqlite3.connect('database.db') as conn:

@@ -47,9 +47,9 @@
                     </div>
                     <div class="seance-details">
                         <div class="seance-ordre">Séance {{ seance[2] }}</div>
-                        <div class="seance-nom">{{ seance[3] }}</div>
+                        <div class="seance-nom">{{ seance[3]|striptags }}</div>
                         {% if seance[4] %}
-                        <div class="seance-description">{{ seance[4] }}</div>
+                        <div class="seance-description">{{ seance[4]|striptags }}</div>
                         {% endif %}
                         {% if seance[5] == 1 and seance[6] %}
                         <div class="seance-date-completion">
@@ -59,7 +59,7 @@
                     </div>
                 </div>
                 <div class="seance-actions">
-                    <a href="/start-session/{{ seance[3] }}" class="btn btn-small btn-primary">
+                    <a href="/programme/start-seance/{{ seance[0] }}" class="btn btn-small btn-primary">
                         🏋️ Démarrer
                     </a>
                 </div>
