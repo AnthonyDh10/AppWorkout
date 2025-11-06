@@ -977,10 +977,14 @@ def programme_start_seance(seance_id):
             cur.execute("SELECT nom_seance FROM programme_seances WHERE id = ?", (seance_id,))
             seance = cur.fetchone()
             
+            print(f"🔍 DEBUG - Séance trouvée: {seance}")
+            
             if seance:
                 # Nettoyer le nom de la séance (enlever les balises HTML)
                 import re
                 nom_seance = re.sub('<[^<]+?>', '', seance[0])
+                
+                print(f"🔍 DEBUG - Nom séance nettoyé: {nom_seance}")
                 
                 # Récupérer les exercices de cette séance
                 cur.execute("""
@@ -990,6 +994,9 @@ def programme_start_seance(seance_id):
                     ORDER BY ordre
                 """, (seance_id,))
                 exercices_data = cur.fetchall()
+                
+                print(f"🔍 DEBUG - Exercices trouvés: {len(exercices_data)} exercices")
+                print(f"🔍 DEBUG - Données brutes: {exercices_data}")
                 
                 # Formater les exercices pour le template
                 template_exercises = []
@@ -1018,6 +1025,8 @@ def programme_start_seance(seance_id):
                             })
                     
                     template_exercises.append(exercice)
+                
+                print(f"🔍 DEBUG - Template exercises formatés: {template_exercises}")
                 
                 # Rediriger vers la page de création de séance avec tout pré-rempli
                 return render_template('track.html', 
