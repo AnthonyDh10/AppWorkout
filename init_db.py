@@ -80,6 +80,21 @@ def init_database():
                 )
             ''')
             
+            # Créer la table des exercices des séances de programme
+            print("🏋️ Création de la table 'programme_exercices'...")
+            cursor.execute('''
+                CREATE TABLE IF NOT EXISTS programme_exercices (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    seance_id INTEGER NOT NULL,
+                    ordre INTEGER NOT NULL,
+                    nom_exercice TEXT NOT NULL,
+                    series INTEGER,
+                    repetitions TEXT,
+                    notes TEXT,
+                    FOREIGN KEY (seance_id) REFERENCES programme_seances (id) ON DELETE CASCADE
+                )
+            ''')
+            
             # Garder l'ancienne table pour compatibilité (deprecated)
             print("📊 Vérification de la table 'performance' (legacy)...")
             cursor.execute('''
