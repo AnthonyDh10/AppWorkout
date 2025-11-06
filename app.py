@@ -8,8 +8,8 @@ import json
 from datetime import datetime
 
 load_dotenv() # Load environment variables from .env
-
-app = Flask(__name__)
+base_dir = os.path.dirname(os.path.abspath(__file__))
+app = Flask(__name__, template_folder=os.path.join(base_dir, 'templates'), static_folder=os.path.join(base_dir, 'static'))
 
 genai.configure(api_key=os.getenv("GEMINI_API_KEY"))
 
@@ -978,55 +978,16 @@ def programme_start_seance(seance_id):
             if seance:
                 # Nettoyer le nom de la séance (enlever les balises HTML)
                 import re
-                nom_seance = re.sub('<[^<]+?>', '', seance[0])
+                nom_seance = re.sub('<[^<]+?>', '', seance[0])  # Supprimer les balises HTML
                 
-                # Récupérer les exercices de cette séance
-                cur.execute("""
-                    SELECT nom_exercice, series, repetitions, notes
-                    FROM programme_exercices
-                    WHERE seance_id = ?
-                    ORDER BY ordre
-                """, (seance_id,))
-                exercices_data = cur.fetchall()
-                
-                # Formater les exercices pour le template
-                template_exercises = []
-                for ex in exercices_data:
-                    exercice = {
-                        'name': ex[0],
-                        'sets': []
-                    }
-                    
-                    # Si on a des séries/reps, créer les sets
-                    if ex[1]:  # series
-                        nb_series = ex[1]
-                        reps = ex[2] if ex[2] else '8-12'  # Valeur par défaut
-                        
-                        for i in range(nb_series):
-                            exercice['sets'].append({
-                                'reps': reps,
-                                'weight': ''
-                            })
-                    else:
-                        # Si pas de séries définies, ajouter 3 sets par défaut
-                        for i in range(3):
-                            exercice['sets'].append({
-                                'reps': '8-12',
-                                'weight': ''
-                            })
-                    
-                    template_exercises.append(exercice)
-                
-                # Rediriger vers la page de création de séance avec tout pré-rempli
+                # Rediriger vers la page de création de séance avec le nom pré-rempli
                 return render_template('track.html', 
                                      session_template_name=nom_seance,
-                                     template_exercises=template_exercises,
+                                     template_exercises=[],
                                      message=None,
                                      recent_sessions=[])
     except sqlite3.Error as e:
         print(f"❌ Erreur: {e}")
-        import traceback
-        traceback.print_exc()
     
     return redirect('/track')
 
@@ -1045,76 +1006,30 @@ def programme_save_from_ai():
         # Enlever toutes les balises HTML du texte
         programme_text_clean = re.sub('<[^<]+?>', '', programme_text)
         
-        # Parser le texte pour extraire les séances et exercices
-        lignes = programme_text_clean.split('\n')
+        # Parser le texte du programme (simple parsing ligne par ligne)
+        lignes = [l.strip() for l in programme_text_clean.split('\n') if l.strip()]
         seances = []
-        seance_courante = None
-        exercices_courants = []
-        ordre_seance = 1
-        ordre_exercice = 1
+        ordre = 1
         
         for ligne in lignes:
-            ligne = ligne.strip()
-            if not ligne:
-                continue
-            
+            # Nettoyer la ligne pour le test
             ligne_lower = ligne.lower().strip('*#- ').strip()
             
-            # Détecter une nouvelle séance
+            # Filtrer UNIQUEMENT les lignes qui COMMENCENT par les mots-clés
             if (ligne_lower.startswith('séance') or 
                 ligne_lower.startswith('jour') or 
                 ligne_lower.startswith('session') or 
-                ligne_lower.startswith('workout')):
+                ligne_lower.startswith('workout') or 
+                ligne_lower.startswith('face')):  # Ajout de "face" pour Face Pull, etc.
                 
+                # Nettoyer la ligne
                 ligne_clean = ligne.strip('*#- ').strip()
-                if len(ligne_clean) > 3 and len(ligne_clean) < 150:
-                    # Sauvegarder la séance précédente si elle existe
-                    if seance_courante:
-                        seance_courante['exercices'] = exercices_courants
-                        seances.append(seance_courante)
-                    
-                    # Créer nouvelle séance
-                    seance_courante = {
-                        'ordre': ordre_seance,
-                        'nom': ligne_clean[:200]
-                    }
-                    exercices_courants = []
-                    ordre_seance += 1
-                    ordre_exercice = 1
-            
-            # Détecter un exercice (commence par un chiffre suivi d'un point)
-            elif seance_courante and re.match(r'^\d+\.', ligne):
-                # Extraire le nom de l'exercice (après "1. " et avant les séries/reps)
-                match = re.match(r'^\d+\.\s*(.+?)(?:\t|\s{2,}|\s+\d+\s+\d)', ligne)
-                if match:
-                    nom_exercice = match.group(1).strip()
-                    
-                    # Extraire séries et répétitions si possible
-                    series_match = re.search(r'(\d+)\s+(\d+-?\d*)', ligne)
-                    series = None
-                    repetitions = None
-                    
-                    if series_match:
-                        series = int(series_match.group(1))
-                        repetitions = series_match.group(2)
-                    
-                    # Extraire les notes (texte entre parenthèses ou après dernier tab)
-                    notes_match = re.search(r'\(([^)]+)\)|\t(.+)$', ligne)
-                    notes = notes_match.group(1) or notes_match.group(2) if notes_match else ''
-                    
-                    exercices_courants.append({
-                        'ordre': ordre_exercice,
-                        'nom': nom_exercice[:200],
-                        'series': series,
-                        'repetitions': repetitions,
-                        'notes': notes[:500] if notes else ''
+                if ligne_clean and len(ligne_clean) > 3 and len(ligne_clean) < 150:  # Entre 3 et 150 caractères
+                    seances.append({
+                        'ordre': ordre,
+                        'nom': ligne_clean[:200]  # Limiter la longueur
                     })
-                    ordre_exercice += 1
-        
-        # Ajouter la dernière séance
-        if seance_courante:
-            seance_courante['exercices'] = exercices_courants
-            seances.append(seance_courante)
+                    ordre += 1
         
         if seances:
             with sqlite3.connect('database.db') as conn:
@@ -1124,21 +1039,12 @@ def programme_save_from_ai():
                 cur.execute("INSERT INTO programmes (nom) VALUES (?)", (nom,))
                 programme_id = cur.lastrowid
                 
-                # Ajouter les séances et leurs exercices
+                # Ajouter les séances
                 for seance in seances:
                     cur.execute("""
                         INSERT INTO programme_seances (programme_id, ordre, nom_seance)
                         VALUES (?, ?, ?)
                     """, (programme_id, seance['ordre'], seance['nom']))
-                    seance_id = cur.lastrowid
-                    
-                    # Ajouter les exercices de cette séance
-                    for exercice in seance.get('exercices', []):
-                        cur.execute("""
-                            INSERT INTO programme_exercices (seance_id, ordre, nom_exercice, series, repetitions, notes)
-                            VALUES (?, ?, ?, ?, ?, ?)
-                        """, (seance_id, exercice['ordre'], exercice['nom'], 
-                              exercice.get('series'), exercice.get('repetitions'), exercice.get('notes', '')))
                 
                 conn.commit()
                 return jsonify({'success': True, 'message': f'Programme sauvegardé avec {len(seances)} séances!'})
@@ -1147,8 +1053,6 @@ def programme_save_from_ai():
             
     except Exception as e:
         print(f"❌ Erreur: {e}")
-        import traceback
-        traceback.print_exc()
         return jsonify({'success': False, 'message': str(e)})
 
 @app.route('/manifest.json')
