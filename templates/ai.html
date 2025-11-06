@@ -249,6 +249,104 @@
     font-weight: 500;
 }
 
+/* Styles pour le contenu du programme généré */
+.training-program-content {
+    line-height: 1.8;
+}
+
+.training-program-content h1,
+.training-program-content h2,
+.training-program-content h3 {
+    color: var(--accent);
+    margin-top: 30px;
+    margin-bottom: 15px;
+}
+
+.training-program-content h1 {
+    font-size: 1.8rem;
+    border-bottom: 3px solid var(--accent);
+    padding-bottom: 10px;
+}
+
+.training-program-content h2 {
+    font-size: 1.4rem;
+    background: linear-gradient(135deg, rgba(244, 162, 97, 0.2), rgba(233, 196, 106, 0.2));
+    padding: 12px 15px;
+    border-radius: 8px;
+    border-left: 4px solid var(--accent);
+}
+
+.training-program-content h3 {
+    font-size: 1.2rem;
+    color: var(--text-primary);
+}
+
+.training-program-content p {
+    margin: 10px 0;
+    color: var(--text-secondary);
+}
+
+.training-program-content ul,
+.training-program-content ol {
+    margin: 15px 0;
+    padding-left: 25px;
+}
+
+.training-program-content li {
+    margin: 8px 0;
+    color: var(--text-primary);
+    line-height: 1.6;
+}
+
+.training-program-content strong {
+    color: var(--accent);
+    font-weight: 600;
+}
+
+.training-program-content code {
+    background: rgba(244, 162, 97, 0.15);
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-family: 'Courier New', monospace;
+    color: var(--accent);
+}
+
+.training-program-content table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 20px 0;
+    background: var(--primary);
+    border-radius: 8px;
+    overflow: hidden;
+}
+
+.training-program-content th {
+    background: var(--accent);
+    color: var(--primary);
+    padding: 12px;
+    text-align: left;
+    font-weight: 600;
+}
+
+.training-program-content td {
+    padding: 10px 12px;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.training-program-content tr:last-child td {
+    border-bottom: none;
+}
+
+.training-program-content blockquote {
+    border-left: 4px solid var(--accent);
+    margin: 20px 0;
+    padding: 15px 20px;
+    background: rgba(244, 162, 97, 0.1);
+    border-radius: 4px;
+    font-style: italic;
+    color: var(--text-secondary);
+}
+
 #saveMessage.success {
     background: var(--success);
     color: white;

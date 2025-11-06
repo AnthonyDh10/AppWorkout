@@ -362,21 +362,47 @@ Si l'Objectif, le Nombre de séances ou le Niveau ne sont pas fournis, tu ne doi
 Format de la réponse
 Tu donneras le nom des exercices en FRANCAIS et les temps de repos en MINUTES.
 Je veux que tu donnes exactement le même nombre de séances que je demande même si je les séances se répètent. Par exemple, si pour un split de 4 jours par semaine, l'utilisateur demande 4 séances, tu dois fournir 4 séances distinctes même si le programme est composé de 2 séances distinctes (A et B). 
-Tu fourniras pour chaque exercice que tu recommandes :
 
-Le NOM de l'exercice
+**FORMAT HYBRIDE OBLIGATOIRE :**
+Pour chaque séance, tu DOIS suivre cette structure EXACTE :
 
-Le nombre de SÉRIES
+1. Titre de séance commençant par "SEANCE X:" suivi du nom descriptif
+2. **LIGNE VIDE OBLIGATOIRE**
+3. Sous le titre, liste CHAQUE exercice sur une ligne séparée commençant par "- " (tiret espace) pour créer une liste à puces Markdown
+4. **LIGNE VIDE OBLIGATOIRE**
+5. IMMÉDIATEMENT APRÈS la liste des exercices, ajoute une section cachée avec des marqueurs de parsing
 
-Le nombre de RÉPÉTITIONS
+**EXEMPLE COMPLET (COPIE EXACTEMENT CE FORMAT) :**
 
-L'INTENSITÉ (cible RIR)
+SEANCE 1: Push (Pectoraux/Épaules)
 
-Le temps de repos entre les séries
+- Développé couché : 4 x 6-8 reps @ RIR 2, 2-3 min repos
+- Squat : 3 x 8-10 reps @ RIR 2, 2 min repos
+- Élévations latérales : 3 x 12-15 reps @ RIR 2, 1.5 min repos
 
-Tu rédigeras de la façon suivante (note le changement de "POIDS" pour "RIR") : NOM : SÉRIE X RÉPÉTITIONS @ RIR X, REPOS Exemple : Développé couché : 4 x 8-10 reps @ RIR 2, 2-3 min repos
+[PARSE_START]
+EXERCICE: Développé couché | SERIES: 4 | REPS: 6-8 | NOTES: RIR 2, repos 2-3 min
+EXERCICE: Squat | SERIES: 3 | REPS: 8-10 | NOTES: RIR 2, repos 2 min
+EXERCICE: Élévations latérales | SERIES: 3 | REPS: 12-15 | NOTES: RIR 2, repos 1.5 min
+[PARSE_END]
 
-Tu utiliseras le mot clé "séance" pour identifier chaque séance dans le programme et seulement les lignes commençant par ce mot clé seront considérées comme des séances. N'utilise pas le mot clé pour des exercices ou descriptions.
+SEANCE 2: Pull (Dos/Biceps)
+
+- Tractions : 4 x 8-10 reps @ RIR 2, 2 min repos
+- Rowing : 3 x 8-10 reps @ RIR 2, 2 min repos
+
+[PARSE_START]
+EXERCICE: Tractions | SERIES: 4 | REPS: 8-10 | NOTES: RIR 2, repos 2 min
+EXERCICE: Rowing | SERIES: 3 | REPS: 8-10 | NOTES: RIR 2, repos 2 min
+[PARSE_END]
+
+**RÈGLES STRICTES :**
+- Les titres de séances DOIVENT commencer par "SEANCE" (tout en majuscules) suivi de deux-points
+- **CHAQUE EXERCICE doit commencer par "- " (tiret espace) pour créer une liste à puces**
+- **TOUJOURS laisser une ligne vide après le titre de séance et avant [PARSE_START]**
+- Chaque bloc [PARSE_START]...[PARSE_END] doit contenir EXACTEMENT les mêmes exercices que la liste visuelle
+- Utilise le pipe "|" comme séparateur dans les lignes EXERCICE
+- N'utilise JAMAIS le mot "SEANCE" ou "EXERCICE:" en dehors de ces structures
 
 Si c'est un nouveau programme, tu dois spécifier la durée du cycle. Exemple : "Voici votre programme pour les 5 prochaines semaines (4 semaines d'entrainement et 1 semaine de deload). Commencez la semaine 1 avec les RIR indiqués."
 
@@ -390,8 +416,12 @@ Tu n'écriras rien de plus que ce qui est demandé dans ce format (sauf si tu do
             response = model.generate_content(enhanced_prompt)
             training_program = response.text
             
+            # Nettoyer le texte : retirer les blocs de parsing pour l'affichage
+            import re
+            training_program_clean = re.sub(r'\[PARSE_START\].*?\[PARSE_END\]', '', training_program, flags=re.DOTALL)
+            
             # Convertir le markdown en HTML
-            training_program_html = markdown.markdown(training_program, extensions=['extra', 'codehilite'])
+            training_program_html = markdown.markdown(training_program_clean, extensions=['extra', 'codehilite'])
             
         except Exception as e:
             # Programme de secours en cas d'erreur
@@ -1057,72 +1087,87 @@ def programme_save_from_ai():
         # Enlever toutes les balises HTML du texte
         programme_text_clean = re.sub('<[^<]+?>', '', programme_text)
         
+        print(f"🔍 DEBUG PARSING - Début du parsing")
+        
         # Parser le texte pour extraire les séances et exercices
         lignes = programme_text_clean.split('\n')
         seances = []
-        seance_courante = None
-        exercices_courants = []
         ordre_seance = 1
-        ordre_exercice = 1
         
-        for ligne in lignes:
-            ligne = ligne.strip()
-            if not ligne:
-                continue
+        i = 0
+        while i < len(lignes):
+            ligne = lignes[i].strip()
             
-            ligne_lower = ligne.lower().strip('*#- ').strip()
-            
-            # Détecter une nouvelle séance
-            if ligne_lower.startswith('séance'):
-                ligne_clean = ligne.strip('*#- ').strip()
-                if len(ligne_clean) > 3 and len(ligne_clean) < 150:
-                    # Sauvegarder la séance précédente si elle existe
-                    if seance_courante:
-                        seance_courante['exercices'] = exercices_courants
-                        seances.append(seance_courante)
-                    
-                    # Créer nouvelle séance
-                    seance_courante = {
-                        'ordre': ordre_seance,
-                        'nom': ligne_clean[:200]
-                    }
-                    exercices_courants = []
-                    ordre_seance += 1
-                    ordre_exercice = 1
-            
-            # Détecter un exercice (commence par un chiffre suivi d'un point)
-            elif seance_courante and re.match(r'^\d+\.', ligne):
-                # Extraire le nom de l'exercice (après "1. " et avant les séries/reps)
-                match = re.match(r'^\d+\.\s*(.+?)(?:\t|\s{2,}|\s+\d+\s+\d)', ligne)
+            # Détecter une nouvelle séance (commence par "SEANCE" en majuscules)
+            if ligne.upper().startswith('SEANCE'):
+                # Extraire le nom de la séance
+                match = re.match(r'^SEANCE\s*\d*\s*[:：]\s*(.+)', ligne, re.IGNORECASE)
                 if match:
-                    nom_exercice = match.group(1).strip()
+                    nom_seance = match.group(1).strip()
+                    print(f"🆕 Séance détectée: {nom_seance}")
                     
-                    # Extraire séries et répétitions si possible
-                    series_match = re.search(r'(\d+)\s+(\d+-?\d*)', ligne)
-                    series = None
-                    repetitions = None
+                    # Chercher le bloc [PARSE_START]...[PARSE_END]
+                    exercices = []
+                    j = i + 1
                     
-                    if series_match:
-                        series = int(series_match.group(1))
-                        repetitions = series_match.group(2)
+                    # Avancer jusqu'à [PARSE_START]
+                    while j < len(lignes) and '[PARSE_START]' not in lignes[j]:
+                        j += 1
                     
-                    # Extraire les notes (texte entre parenthèses ou après dernier tab)
-                    notes_match = re.search(r'\(([^)]+)\)|\t(.+)$', ligne)
-                    notes = notes_match.group(1) or notes_match.group(2) if notes_match else ''
+                    if j < len(lignes) and '[PARSE_START]' in lignes[j]:
+                        j += 1  # Passer la ligne [PARSE_START]
+                        ordre_exercice = 1
+                        
+                        # Lire les exercices jusqu'à [PARSE_END]
+                        while j < len(lignes) and '[PARSE_END]' not in lignes[j]:
+                            ligne_ex = lignes[j].strip()
+                            
+                            if ligne_ex.startswith('EXERCICE:'):
+                                # Parser la ligne : EXERCICE: Nom | SERIES: X | REPS: Y-Z | NOTES: ...
+                                parts = ligne_ex.split('|')
+                                
+                                nom_exercice = parts[0].replace('EXERCICE:', '').strip()
+                                series = None
+                                repetitions = None
+                                notes = ''
+                                
+                                for part in parts[1:]:
+                                    part = part.strip()
+                                    if part.startswith('SERIES:'):
+                                        series = int(part.replace('SERIES:', '').strip())
+                                    elif part.startswith('REPS:'):
+                                        repetitions = part.replace('REPS:', '').strip()
+                                    elif part.startswith('NOTES:'):
+                                        notes = part.replace('NOTES:', '').strip()
+                                
+                                exercices.append({
+                                    'ordre': ordre_exercice,
+                                    'nom': nom_exercice[:200],
+                                    'series': series,
+                                    'repetitions': repetitions,
+                                    'notes': notes[:500]
+                                })
+                                ordre_exercice += 1
+                                print(f"   ✅ Exercice: {nom_exercice} ({series}x{repetitions})")
+                            
+                            j += 1
+                        
+                        i = j  # Continuer après [PARSE_END]
                     
-                    exercices_courants.append({
-                        'ordre': ordre_exercice,
-                        'nom': nom_exercice[:200],
-                        'series': series,
-                        'repetitions': repetitions,
-                        'notes': notes[:500] if notes else ''
+                    seances.append({
+                        'ordre': ordre_seance,
+                        'nom': nom_seance[:200],
+                        'exercices': exercices
                     })
-                    ordre_exercice += 1
+                    ordre_seance += 1
+                    print(f"   📊 Total: {len(exercices)} exercices pour cette séance")
+            
+            i += 1
         
-        # Ajouter la dernière séance
-        if seance_courante:
-            seance_courante['exercices'] = exercices_courants
-            seances.append(seance_courante)
+        print(f"\n📊 RÉSUMÉ DU PARSING:")
+        print(f"   Total séances détectées: {len(seances)}")
+        for s in seances:
+            print(f"   - {s['nom']}: {len(s.get('exercices', []))} exercices")
         
         if seances:
             with sqlite3.connect('database.db') as conn:
