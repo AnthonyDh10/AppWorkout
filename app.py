@@ -62,10 +62,88 @@ def format_datetime(date_string):
 app.jinja_env.filters['format_date'] = format_date
 app.jinja_env.filters['format_datetime'] = format_datetime
 
+def migrate_database_schema(conn):
+    """Migre l'ancienne structure de base de données vers la nouvelle"""
+    try:
+        print("🔄 Début de la migration de la base de données...")
+        cursor = conn.cursor()
+        
+        # 1. Créer une sauvegarde des données existantes
+        cursor.execute("SELECT * FROM exercises")
+        old_exercises = cursor.fetchall()
+        print(f"📊 {len(old_exercises)} exercices à migrer")
+        
+        # 2. Créer la nouvelle table exercises temporaire
+        cursor.execute('''
+            CREATE TABLE exercises_new (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                session_id INTEGER NOT NULL,
+                exercise_name TEXT NOT NULL,
+                FOREIGN KEY (session_id) REFERENCES sessions (id) ON DELETE CASCADE
+            )
+        ''')
+        
+        # 3. Créer la table sets si elle n'existe pas
+        cursor.execute('''
+            CREATE TABLE IF NOT EXISTS sets (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                exercise_id INTEGER NOT NULL,
+                set_number INTEGER NOT NULL,
+                reps INTEGER NOT NULL,
+                weight REAL NOT NULL,
+                FOREIGN KEY (exercise_id) REFERENCES exercises (id) ON DELETE CASCADE
+            )
+        ''')
+        
+        # 4. Migrer les données vers la nouvelle structure
+        for old_exercise in old_exercises:
+            # old_exercise: (id, session_id, exercise_name, sets, reps, weight)
+            old_id, session_id, exercise_name, sets_count, reps, weight = old_exercise
+            
+            # Créer le nouvel exercice (sans sets, reps, weight)
+            cursor.execute('''
+                INSERT INTO exercises_new (session_id, exercise_name) 
+                VALUES (?, ?)
+            ''', (session_id, exercise_name))
+            
+            new_exercise_id = cursor.lastrowid
+            
+            # Créer les séries individuelles
+            if sets_count and reps and weight:
+                for set_num in range(1, int(sets_count) + 1):
+                    cursor.execute('''
+                        INSERT INTO sets (exercise_id, set_number, reps, weight)
+                        VALUES (?, ?, ?, ?)
+                    ''', (new_exercise_id, set_num, int(reps), float(weight)))
+        
+        # 5. Remplacer l'ancienne table par la nouvelle
+        cursor.execute("DROP TABLE exercises")
+        cursor.execute("ALTER TABLE exercises_new RENAME TO exercises")
+        
+        conn.commit()
+        print("✅ Migration terminée avec succès")
+        
+    except Exception as e:
+        print(f"❌ Erreur durant la migration: {e}")
+        conn.rollback()
+        raise
+
 def init_db():
     """Initialise la base de données avec gestion d'erreur"""
     try:
         with sqlite3.connect('database.db') as conn:
+            # Vérifier si migration est nécessaire (ancienne structure avec sets dans exercises)
+            cursor = conn.cursor()
+            try:
+                cursor.execute("PRAGMA table_info(exercises)")
+                columns = [col[1] for col in cursor.fetchall()]
+                if 'sets' in columns or 'reps' in columns or 'weight' in columns:
+                    print("🔄 Migration de la base de données détectée...")
+                    migrate_database_schema(conn)
+            except sqlite3.OperationalError:
+                # Table n'existe pas encore, c'est normal
+                pass
+            
             # Table pour les séances
             conn.execute('''
                 CREATE TABLE IF NOT EXISTS sessions (
@@ -362,7 +440,7 @@ Groupes musculaires à travailler OU le type de "split" souhaité.
 
 Pour que le programme soit sauvegardé correctement, tu DOIS utiliser ce format EXACT :
 
-ÉTAPE 1 : Écrire le titre de la séance
+ÉTAPE 1 : Écrire le titre de la séance (Garde un titre simple et clair et n'utilise pas le symbole "&")
 ────────────────────────────────────────
 SEANCE 1: Nom de la séance
 
@@ -961,18 +1039,19 @@ def programme_duplicate(programme_id):
             cur = conn.cursor()
             
             # Récupérer le programme original
-            cur.execute("SELECT nom FROM programmes WHERE id = ?", (programme_id,))
+            cur.execute("SELECT nom, description FROM programmes WHERE id = ?", (programme_id,))
             programme = cur.fetchone()
             
             if programme:
                 # Créer la copie
                 nouveau_nom = f"{programme[0]} (Copie)"
-                cur.execute("INSERT INTO programmes (nom) VALUES (?)", (nouveau_nom,))
+                nouvelle_description = programme[1] if programme[1] else None
+                cur.execute("INSERT INTO programmes (nom, description) VALUES (?, ?)", (nouveau_nom, nouvelle_description))
                 nouveau_programme_id = cur.lastrowid
                 
                 # Copier les séances
                 cur.execute("""
-                    SELECT ordre, nom_seance 
+                    SELECT id, ordre, nom_seance, description
                     FROM programme_seances 
                     WHERE programme_id = ? 
                     ORDER BY ordre
@@ -980,10 +1059,30 @@ def programme_duplicate(programme_id):
                 seances = cur.fetchall()
                 
                 for seance in seances:
+                    ancien_seance_id, ordre, nom_seance, description = seance
+                    
+                    # Créer la nouvelle séance
                     cur.execute("""
-                        INSERT INTO programme_seances (programme_id, ordre, nom_seance)
-                        VALUES (?, ?, ?)
-                    """, (nouveau_programme_id, seance[0], seance[1]))
+                        INSERT INTO programme_seances (programme_id, ordre, nom_seance, description)
+                        VALUES (?, ?, ?, ?)
+                    """, (nouveau_programme_id, ordre, nom_seance, description))
+                    nouveau_seance_id = cur.lastrowid
+                    
+                    # Copier tous les exercices de cette séance
+                    cur.execute("""
+                        SELECT ordre, nom_exercice, series, repetitions, notes
+                        FROM programme_exercices 
+                        WHERE seance_id = ?
+                        ORDER BY ordre
+                    """, (ancien_seance_id,))
+                    exercices = cur.fetchall()
+                    
+                    for exercice in exercices:
+                        ordre_ex, nom_exercice, series, repetitions, notes = exercice
+                        cur.execute("""
+                            INSERT INTO programme_exercices (seance_id, ordre, nom_exercice, series, repetitions, notes)
+                            VALUES (?, ?, ?, ?, ?, ?)
+                        """, (nouveau_seance_id, ordre_ex, nom_exercice, series, repetitions, notes))
                 
                 conn.commit()
     except sqlite3.Error as e:
