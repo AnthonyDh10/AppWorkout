@@ -113,7 +113,7 @@ function addExercise(templateData = null) {
     exerciseDiv.innerHTML = `
         <div class="exercise-header">
             <h3>🏋️ Exercice ${exerciseCount + 1}</h3>
-            <button type="button" class="btn btn-danger btn-small" onclick="removeExercise(this)">❌</button>
+            <button type="button" class="btn btn-danger btn-small" onclick="removeExercise(this)">Supprimer</button>
         </div>
         <div class="form-row">
             <div class="form-group">
@@ -185,7 +185,7 @@ function addSet(exerciseId, setData = null) {
                 <input type="number" class="set-weight" step="0.5" min="0" 
                        placeholder="80" value="${setData ? setData.weight : ''}" required>
             </div>
-            <button type="button" class="btn btn-danger btn-mini" onclick="removeSet(this)">🗑️</button>
+            <button type="button" class="btn btn-danger btn-mini" onclick="removeSet(this)">×</button>
         </div>
     `;
     
@@ -404,6 +404,7 @@ document.addEventListener('DOMContentLoaded', function() {
 .exercise-header h3 {
     margin: 0;
     color: var(--primary-color);
+    line-height: 1.2;
 }
 
 .form-row {
@@ -455,6 +456,11 @@ document.addEventListener('DOMContentLoaded', function() {
     border-radius: 8px;
 }
 
+.set-row .btn-mini {
+    margin-left: auto;
+    flex-shrink: 0;
+}
+
 .set-number {
     font-weight: 600;
     color: var(--primary-color);
@@ -492,8 +498,51 @@ document.addEventListener('DOMContentLoaded', function() {
 }
 
 .btn-mini {
-    padding: 6px 10px;
-    font-size: 12px;
+    padding: 4px 8px;
+    font-size: 16px;
+    font-weight: bold;
+    line-height: 1;
+    min-width: 28px;
+    height: 28px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 4px;
+}
+
+.btn-small {
+    padding: 6px 12px;
+    font-size: 13px;
+    font-weight: 500;
+    line-height: 1.2;
+}
+
+/* Améliorations pour les boutons de suppression */
+.btn-danger.btn-mini {
+    background-color: #dc3545;
+    border-color: #dc3545;
+    color: white;
+    transition: all 0.2s ease;
+}
+
+.btn-danger.btn-mini:hover {
+    background-color: #c82333;
+    border-color: #bd2130;
+    transform: scale(1.05);
+}
+
+.btn-danger.btn-small {
+    background-color: #dc3545;
+    border-color: #dc3545;
+    color: white;
+    transition: all 0.2s ease;
+}
+
+.btn-danger.btn-small:hover {
+    background-color: #c82333;
+    border-color: #bd2130;
+    transform: translateY(-1px);
+    box-shadow: 0 2px 4px rgba(220, 53, 69, 0.3);
 }
 
 .session-controls {
