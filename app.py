@@ -1,5 +1,5 @@
 import os
-from flask import Flask, render_template, request, jsonify, redirect
+from flask import Flask, render_template, request, jsonify, redirect, flash, session
 import google.generativeai as genai
 from dotenv import load_dotenv
 import sqlite3
@@ -10,6 +10,7 @@ from datetime import datetime
 load_dotenv() # Load environment variables from .env
 base_dir = os.path.dirname(os.path.abspath(__file__))
 app = Flask(__name__, template_folder=os.path.join(base_dir, 'templates'), static_folder=os.path.join(base_dir, 'static'))
+app.secret_key = os.getenv("SECRET_KEY", "dev-secret-key-change-in-production")
 
 genai.configure(api_key=os.getenv("GEMINI_API_KEY"))
 
@@ -225,30 +226,56 @@ def init_db():
 
 @app.route('/')
 def home():
-    """Page d'accueil - affiche les séances disponibles"""
-    sessions = []
+    """Page d'accueil - affiche la prochaine séance du programme actif"""
+    programme_actif = None
+    prochaine_seance = None
     
     try:
         with sqlite3.connect('database.db') as conn:
             cur = conn.cursor()
-            # Récupérer toutes les séances distinctes avec le nombre de jours depuis la dernière
-            cur.execute("""
-                SELECT 
-                    name,
-                    MAX(date) as last_date,
-                    CAST((julianday('now') - julianday(MAX(date))) AS INTEGER) as days_since
-                FROM sessions
-                WHERE name IS NOT NULL AND name != ''
-                GROUP BY name
-                ORDER BY last_date DESC
-            """)
-            sessions = cur.fetchall()
+            
+            # Récupérer le programme actif
+            cur.execute("SELECT * FROM programmes WHERE actif = 1 LIMIT 1")
+            programme_actif = cur.fetchone()
+            
+            if programme_actif:
+                programme_id = programme_actif[0]
+                
+                # Trouver la dernière séance complétée (ordre le plus élevé)
+                cur.execute("""
+                    SELECT MAX(ordre) FROM programme_seances 
+                    WHERE programme_id = ? AND completee = 1
+                """, (programme_id,))
+                
+                derniere_completee = cur.fetchone()[0]
+                
+                if derniere_completee is None:
+                    # Aucune séance complétée, prendre la première séance
+                    cur.execute("""
+                        SELECT * FROM programme_seances 
+                        WHERE programme_id = ? 
+                        ORDER BY ordre ASC 
+                        LIMIT 1
+                    """, (programme_id,))
+                else:
+                    # Prendre la séance suivant la dernière complétée
+                    cur.execute("""
+                        SELECT * FROM programme_seances 
+                        WHERE programme_id = ? AND ordre > ?
+                        ORDER BY ordre ASC 
+                        LIMIT 1
+                    """, (programme_id, derniere_completee))
+                
+                prochaine_seance = cur.fetchone()
+                
     except sqlite3.Error as e:
-        print(f"❌ Erreur lors de la récupération des séances: {e}")
+        print(f"❌ Erreur lors de la récupération du programme: {e}")
     except Exception as e:
         print(f"❌ Erreur inattendue: {e}")
     
-    return render_template('index.html', sessions=sessions)
+    return render_template('index.html', 
+                         programme_actif=programme_actif, 
+                         prochaine_seance=prochaine_seance)
 
 @app.route('/ai', methods=['GET', 'POST'])
 def ai_coach():
@@ -435,7 +462,7 @@ Groupes musculaires à travailler OU le type de "split" souhaité.
 {user_prompt}
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-� FORMAT DE RÉPONSE OBLIGATOIRE - TRÈS IMPORTANT 🚨
+ FORMAT DE RÉPONSE OBLIGATOIRE - TRÈS IMPORTANT !
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 Pour que le programme soit sauvegardé correctement, tu DOIS utiliser ce format EXACT :
@@ -633,6 +660,7 @@ def start_session(session_name):
 def track_performance():
     message = None
     recent_sessions = []
+    session_created_successfully = False
     
     if request.method == 'POST':
         action = request.form.get('action')
@@ -688,8 +716,26 @@ def track_performance():
                                             )
                                             total_sets += 1
                             
+                            # Vérifier s'il s'agit d'une séance de programme à marquer comme complétée
+                            programme_seance_id = request.form.get('programme_seance_id')
+                            if programme_seance_id:
+                                try:
+                                    cur.execute("""
+                                        UPDATE programme_seances 
+                                        SET completee = 1, date_completion = CURRENT_TIMESTAMP 
+                                        WHERE id = ?
+                                    """, (int(programme_seance_id),))
+                                    print(f"✅ Séance de programme {programme_seance_id} marquée comme complétée")
+                                except (ValueError, sqlite3.Error) as e:
+                                    print(f"⚠️ Erreur lors de la mise à jour de la séance de programme: {e}")
+                            
                             conn.commit()
+                            session_created_successfully = True
                             message = f"✅ Séance '{session_name}' enregistrée avec {total_exercises} exercice(s) et {total_sets} série(s)!"
+                            
+                            # Message supplémentaire si c'était une séance de programme
+                            if programme_seance_id:
+                                message += " 🎯 Séance du programme marquée comme complétée!"
                     else:
                         message = "⚠️ Aucun exercice valide trouvé dans la séance."
                     
@@ -723,6 +769,11 @@ def track_performance():
     except Exception as e:
         print(f"Erreur inattendue lors de la récupération des séances : {e}")
         recent_sessions = []
+    
+    # Rediriger vers la page programme si une séance a été validée avec succès
+    if session_created_successfully:
+        flash(message, 'success')
+        return redirect('/programme')
         
     return render_template('track.html', message=message, recent_sessions=recent_sessions)
 
@@ -934,7 +985,7 @@ def programme():
             cur = conn.cursor()
             
             # Récupérer le programme actif
-            cur.execute("SELECT * FROM programmes WHERE actif = 1 AND archive = 0 LIMIT 1")
+            cur.execute("SELECT * FROM programmes WHERE actif = 1 LIMIT 1")
             programme_actif = cur.fetchone()
             
             if programme_actif:
@@ -954,8 +1005,8 @@ def programme():
                     progression['completees'] = sum(1 for s in seances_programme if s[5] == 1)
                     progression['pourcentage'] = int((progression['completees'] / progression['total']) * 100)
             
-            # Récupérer tous les programmes non archivés
-            cur.execute("SELECT * FROM programmes WHERE archive = 0 ORDER BY actif DESC, date_creation DESC")
+            # Récupérer tous les programmes
+            cur.execute("SELECT * FROM programmes ORDER BY actif DESC, date_creation DESC")
             tous_programmes = cur.fetchall()
             
     except sqlite3.Error as e:
@@ -1090,18 +1141,6 @@ def programme_duplicate(programme_id):
     
     return redirect('/programme')
 
-@app.route('/programme/archive/<int:programme_id>')
-def programme_archive(programme_id):
-    """Archiver un programme"""
-    try:
-        with sqlite3.connect('database.db') as conn:
-            conn.execute("UPDATE programmes SET archive = 1, actif = 0 WHERE id = ?", (programme_id,))
-            conn.commit()
-    except sqlite3.Error as e:
-        print(f"❌ Erreur lors de l'archivage du programme: {e}")
-    
-    return redirect('/programme')
-
 @app.route('/programme/delete/<int:programme_id>')
 def programme_delete(programme_id):
     """Supprimer un programme"""
@@ -1206,6 +1245,7 @@ def programme_start_seance(seance_id):
                 return render_template('track.html', 
                                      session_template_name=nom_seance,
                                      template_exercises=template_exercises,
+                                     programme_seance_id=seance_id,
                                      message=None,
                                      recent_sessions=[])
     except sqlite3.Error as e:

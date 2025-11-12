@@ -6,6 +6,17 @@
 <div class="fade-in">
     <h1>📅 Mon Programme d'Entraînement</h1>
     
+    <!-- Messages flash -->
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+            {% for category, message in messages %}
+            <div class="alert alert-{{ category }}">
+                {{ message }}
+            </div>
+            {% endfor %}
+        {% endif %}
+    {% endwith %}
+    
     <!-- Programme Actif -->
     {% if programme_actif %}
     <div class="card programme-actif">
@@ -65,10 +76,6 @@
             <a href="/programme/duplicate/{{ programme_actif[0] }}" class="btn btn-secondary">
                 📋 Dupliquer
             </a>
-            <a href="/programme/archive/{{ programme_actif[0] }}" class="btn btn-secondary" 
-               onclick="return confirm('Voulez-vous archiver ce programme ?')">
-                📦 Archiver
-            </a>
         </div>
     </div>
     {% else %}
@@ -109,10 +116,6 @@
                         {% endif %}
                         <a href="/programme/duplicate/{{ prog[0] }}" class="btn btn-mini btn-secondary" title="Dupliquer">
                             📋
-                        </a>
-                        <a href="/programme/archive/{{ prog[0] }}" class="btn btn-mini btn-secondary" 
-                           onclick="return confirm('Archiver ce programme ?')" title="Archiver">
-                            📦
                         </a>
                         <a href="/programme/delete/{{ prog[0] }}" class="btn btn-mini btn-danger" 
                            onclick="return confirm('Supprimer définitivement ce programme ?')" title="Supprimer">
@@ -402,6 +405,27 @@ function toggleSeance(seanceId) {
     color: var(--text-secondary);
     font-style: italic;
     padding: 40px;
+}
+
+/* Messages flash */
+.alert {
+    padding: 16px 20px;
+    border-radius: 8px;
+    margin-bottom: 20px;
+    font-weight: 500;
+    border-left: 4px solid;
+}
+
+.alert-success {
+    background-color: rgba(46, 204, 113, 0.1);
+    color: #27ae60;
+    border-left-color: #27ae60;
+}
+
+.alert-error {
+    background-color: rgba(231, 76, 60, 0.1);
+    color: #e74c3c;
+    border-left-color: #e74c3c;
 }
 
 @media (max-width: 768px) {

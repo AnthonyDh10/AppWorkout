@@ -32,6 +32,9 @@
             <form method="post" action="/track" id="session-form">
                 <input type="hidden" name="action" value="create_session">
                 <input type="hidden" name="exercises_data" id="exercises_data">
+                {% if programme_seance_id %}
+                <input type="hidden" name="programme_seance_id" value="{{ programme_seance_id }}">
+                {% endif %}
                 
                 <label for="session_name">📋 Nom de la séance :</label>
                 <input 

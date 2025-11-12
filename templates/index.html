@@ -4,63 +4,236 @@
 
 {% block content %}
 <div class="fade-in">
-    <h1>💪 Mes Séances</h1>
+    <h1>🏋️ Mon Entraînement</h1>
     
-    {% if sessions %}
-    <div class="section">
-        <p style="text-align: center; color: var(--text-secondary); margin-bottom: var(--spacing-lg);">
-            Choisissez une séance pour commencer votre entraînement
-        </p>
+    {% if programme_actif and prochaine_seance %}
+    <div class="programme-actif-card">
+        <div class="programme-header">
+            <h2>{{ programme_actif[1] }}</h2>
+            <span class="badge-actif">✓ Actif</span>
+        </div>
         
-        <div class="sessions-grid">
-            {% for session in sessions %}
-            <a href="/start-session/{{ session[0]|urlencode }}" class="session-button">
-                <div class="session-button-content">
-                    <h2 class="session-name">{{ session[0] }}</h2>
-                    <div class="session-info">
-                        {% if session[2] == 0 %}
-                        <span class="session-days">Aujourd'hui</span>
-                        {% elif session[2] == 1 %}
-                        <span class="session-days">Il y a 1 jour</span>
-                        {% else %}
-                        <span class="session-days">Il y a {{ session[2] }} jours</span>
-                        {% endif %}
-                    </div>
+        <div class="prochaine-seance">
+            <h3>📋 Prochaine séance</h3>
+            <div class="seance-card">
+                <div class="seance-info">
+                    <div class="seance-numero">Séance {{ prochaine_seance[2] }}</div>
+                    <div class="seance-nom">{{ prochaine_seance[3]|striptags }}</div>
+                    {% if prochaine_seance[4] %}
+                    <div class="seance-description">{{ prochaine_seance[4]|striptags }}</div>
+                    {% endif %}
                 </div>
+                <a href="/programme/start-seance/{{ prochaine_seance[0] }}" class="btn btn-primary btn-large">
+                    🚀 Commencer l'entraînement
+                </a>
+            </div>
+        </div>
+        
+        <div class="actions-rapides">
+            <a href="/programme" class="btn btn-secondary">
+                📊 Voir le programme complet
             </a>
-            {% endfor %}
+            <a href="/track" class="btn btn-secondary">
+                ➕ Séance libre
+            </a>
         </div>
     </div>
     
-    <div class="card" style="text-align: center; margin-top: var(--spacing-xl);">
-        <a href="/track" class="btn btn-secondary btn-full">
-            ➕ Créer une nouvelle séance
-        </a>
+    {% elif programme_actif %}
+    <div class="programme-complet-card">
+        <div class="programme-header">
+            <h2>{{ programme_actif[1] }}</h2>
+            <span class="badge-complete">🎉 Programme Terminé</span>
+        </div>
+        
+        <div class="message-complete">
+            <div style="font-size: 3rem; margin-bottom: var(--spacing-md);">🏆</div>
+            <h3>Félicitations !</h3>
+            <p>Vous avez terminé toutes les séances de ce programme.</p>
+        </div>
+        
+        <div class="actions-rapides">
+            <a href="/programme" class="btn btn-primary">
+                🔄 Changer de programme
+            </a>
+            <a href="/ai" class="btn btn-secondary">
+                🤖 Créer un nouveau programme
+            </a>
+        </div>
     </div>
     
     {% else %}
-    <div class="card text-center">
+    <div class="no-programme-card">
         <div class="empty-state">
-            <div style="font-size: 4rem; margin-bottom: var(--spacing-lg);">🎯</div>
-            <h2>Aucune séance enregistrée</h2>
+            <div style="font-size: 4rem; margin-bottom: var(--spacing-lg);">📅</div>
+            <h2>Aucun programme actif</h2>
             <p style="font-size: 1.1rem; margin: var(--spacing-lg) 0; color: var(--text-secondary);">
-                Commencez par créer votre première séance d'entraînement
+                Activez un programme d'entraînement pour commencer
             </p>
-            <a href="/track" class="btn btn-primary btn-full" style="max-width: 300px; margin: 0 auto;">
-                🚀 Créer ma première séance
-            </a>
-        </div>
-    </div>
-    
-    <div class="section">
-        <h3 style="text-align: center;">💡 Conseil</h3>
-        <div class="card" style="padding: var(--spacing-lg);">
-            <p style="text-align: center; color: var(--text-secondary); line-height: 1.7;">
-                Une fois votre première séance enregistrée, vous pourrez la retrouver ici 
-                et la relancer facilement pour vos prochains entraînements !
-            </p>
+            
+            <div class="actions-grid">
+                <a href="/programme" class="btn btn-primary">
+                    📚 Mes programmes
+                </a>
+                <a href="/ai" class="btn btn-secondary">
+                    🤖 Créer avec l'IA
+                </a>
+                <a href="/track" class="btn btn-outline">
+                    🏋️ Séance libre
+                </a>
+            </div>
         </div>
     </div>
     {% endif %}
 </div>
+
+<style>
+.programme-actif-card,
+.programme-complet-card,
+.no-programme-card {
+    background: var(--card-bg);
+    border-radius: 16px;
+    padding: var(--spacing-xl);
+    margin-bottom: var(--spacing-lg);
+    border: 2px solid var(--border-color);
+}
+
+.programme-actif-card {
+    background: linear-gradient(135deg, var(--accent), var(--accent-secondary));
+    color: var(--primary);
+    border: none;
+}
+
+.programme-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: var(--spacing-xl);
+    padding-bottom: var(--spacing-md);
+    border-bottom: 2px solid rgba(13, 27, 42, 0.2);
+}
+
+.programme-header h2 {
+    margin: 0;
+    color: var(--primary);
+}
+
+.badge-actif,
+.badge-complete {
+    padding: 8px 16px;
+    border-radius: 20px;
+    font-size: 14px;
+    font-weight: 600;
+}
+
+.badge-actif {
+    background: var(--success);
+    color: white;
+}
+
+.badge-complete {
+    background: var(--warning);
+    color: var(--primary);
+}
+
+.prochaine-seance h3 {
+    color: var(--primary);
+    margin-bottom: var(--spacing-md);
+}
+
+.seance-card {
+    background: rgba(13, 27, 42, 0.6);
+    border-radius: 12px;
+    padding: var(--spacing-lg);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: var(--spacing-lg);
+}
+
+.seance-info {
+    flex: 1;
+}
+
+.seance-numero {
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--accent);
+    text-transform: uppercase;
+    margin-bottom: 4px;
+}
+
+.seance-nom {
+    font-size: 1.3rem;
+    font-weight: 700;
+    color: white;
+    margin-bottom: 4px;
+}
+
+.seance-description {
+    font-size: 14px;
+    color: rgba(255, 255, 255, 0.8);
+}
+
+.btn-large {
+    padding: 16px 32px;
+    font-size: 1.1rem;
+    font-weight: 600;
+    white-space: nowrap;
+}
+
+.actions-rapides {
+    display: flex;
+    gap: var(--spacing-md);
+    flex-wrap: wrap;
+}
+
+.programme-complet-card .message-complete,
+.no-programme-card .empty-state {
+    text-align: center;
+    padding: var(--spacing-xl) 0;
+}
+
+.message-complete h3,
+.empty-state h2 {
+    color: var(--text-primary);
+    margin-bottom: var(--spacing-md);
+}
+
+.message-complete p {
+    color: var(--text-secondary);
+    font-size: 1.1rem;
+    margin-bottom: var(--spacing-xl);
+}
+
+.actions-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: var(--spacing-md);
+    max-width: 600px;
+    margin: 0 auto;
+}
+
+@media (max-width: 768px) {
+    .programme-header {
+        flex-direction: column;
+        gap: var(--spacing-md);
+        text-align: center;
+    }
+    
+    .seance-card {
+        flex-direction: column;
+        gap: var(--spacing-md);
+        text-align: center;
+    }
+    
+    .actions-rapides {
+        flex-direction: column;
+    }
+    
+    .actions-grid {
+        grid-template-columns: 1fr;
+    }
+}
+</style>
 {% endblock %}
